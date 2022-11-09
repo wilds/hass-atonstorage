@@ -3,15 +3,16 @@ import logging
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.const import CONF_DEVICE_ID, CONF_NAME, CONF_SCAN_INTERVAL
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import slugify
-from homeassistant.config_entries import ConfigFlow, OptionsFlow, ConfigEntry
-from homeassistant.core import callback
-
-from .controller import Controller as AtonStorage, AtonStorageConnectionError, SerialNumberRequiredError
 
 from .const import DEFAULT_NAME, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .controller import AtonStorageConnectionError
+from .controller import Controller as AtonStorage
+from .controller import SerialNumberRequiredError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,20 +40,20 @@ class FlowHandler(ConfigFlow, domain=DOMAIN):
 
                 serial_number = user_input.get(CONF_DEVICE_ID, None)
                 name = user_input.get(CONF_NAME, DEFAULT_NAME)
-                #interval = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+                # interval = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
 
                 opts = {"session": async_get_clientsession(self.hass)}
                 controller = AtonStorage(self.hass, serial_number, opts)
                 await controller.refresh()
 
                 await self.async_set_unique_id(slugify(controller.serialNumber))
-                #await self.async_set_unique_id(slugify(serial_number))
-                #self._abort_if_unique_id_configured()
+                # await self.async_set_unique_id(slugify(serial_number))
+                # self._abort_if_unique_id_configured()
 
                 return self.async_create_entry(
                     title=name,
                     data=user_input
-                    #data={CONF_DEVICE_ID: serial_number, CONF_NAME: name, CONF_SCAN_INTERVAL: interval},
+                    # data={CONF_DEVICE_ID: serial_number, CONF_NAME: name, CONF_SCAN_INTERVAL: interval},
                 )
             except AtonStorageConnectionError:
                 errors["base"] = "cannot_connect"
@@ -66,7 +67,7 @@ class FlowHandler(ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=DEVICE_SCHEMA, errors=errors
         )
 
-    #async def async_step_import(self, user_input):
+    # async def async_step_import(self, user_input):
     #    """Handle import."""
     #    return await self.async_step_user(user_input)
 
@@ -82,26 +83,30 @@ class OptionsFlowHandler(OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""
-        #return await self.async_step_user()
-        #name = self.config_entry.options.get(CONF_NAME, DEFAULT_NAME)
+        # return await self.async_step_user()
+        # name = self.config_entry.options.get(CONF_NAME, DEFAULT_NAME)
 
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        #serial_number = self.config_entry.options.get(CONF_DEVICE_ID, None)
-        #name = self.config_entry.options.get(CONF_NAME, DEFAULT_NAME)
-        interval = self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+        # serial_number = self.config_entry.options.get(CONF_DEVICE_ID, None)
+        # name = self.config_entry.options.get(CONF_NAME, DEFAULT_NAME)
+        interval = self.config_entry.options.get(
+            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+        )
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({
-                #vol.Required(CONF_DEVICE_ID, default=serial_number): str,
-                #vol.Optional(CONF_NAME, default=name): str,
-                vol.Optional(CONF_SCAN_INTERVAL, default=interval): int,
-            })
+            data_schema=vol.Schema(
+                {
+                    # vol.Required(CONF_DEVICE_ID, default=serial_number): str,
+                    # vol.Optional(CONF_NAME, default=name): str,
+                    vol.Optional(CONF_SCAN_INTERVAL, default=interval): int,
+                }
+            ),
         )
 
-    #async def async_step_user(self, user_input=None):
+    # async def async_step_user(self, user_input=None):
     #    """Handle a flow initialized by the user."""
     #    name = self.config_entry.options.get(CONF_NAME, DEFAULT_NAME)
 
@@ -120,4 +125,3 @@ class OptionsFlowHandler(OptionsFlow):
     #            vol.Optional(CONF_SCAN_INTERVAL, default=interval): int,
     #        })
     #    )
-#

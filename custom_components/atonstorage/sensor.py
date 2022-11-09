@@ -1,39 +1,31 @@
 """AtonStorage integration."""
 import logging
-from typing import Callable
+from datetime import datetime
 
-from homeassistant.const import (
-    CONF_NAME,
-)
-from homeassistant.const import (
-    ELECTRIC_CURRENT_AMPERE,
-    ELECTRIC_POTENTIAL_VOLT,
-    ENERGY_KILO_WATT_HOUR,
-    PERCENTAGE,
-    POWER_VOLT_AMPERE_REACTIVE,
-    POWER_WATT,
-    TEMP_CELSIUS,
-    FREQUENCY_HERTZ,
-)
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import Entity
-from homeassistant.util import slugify
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import (
+    CONF_NAME,
+    ELECTRIC_CURRENT_AMPERE,
+    ELECTRIC_POTENTIAL_VOLT,
+    FREQUENCY_HERTZ,
+    PERCENTAGE,
+    POWER_WATT,
+    TEMP_CELSIUS,
+)
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 from homeassistant.util.dt import as_local
 
-from datetime import datetime
-
-from .controller import Controller as AtonStorage
-
 from .const import DOMAIN
+from .controller import Controller as AtonStorage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -149,13 +141,12 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     SensorEntityDescription(
         key="ahCaricati",
         name="Current charged",
         icon="mdi:battery-plus-variant",
         native_unit_of_measurement="AH",
-        #device_class=SensorDeviceClass.CURRENT,
+        # device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
@@ -163,10 +154,9 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         name="Current discharged",
         icon="mdi:battery-minus-variant",
         native_unit_of_measurement="AH",
-        #device_class=SensorDeviceClass.CURRENT,
+        # device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     SensorEntityDescription(
         key="pMaxVenduta",
         name="Max power sold",
@@ -203,7 +193,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         key="eVenduta",
         name="Energy sold",
         icon="mdi:solar-power",
-        #native_unit_of_measurement=POWER_WATT,
+        # native_unit_of_measurement=POWER_WATT,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -211,7 +201,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         key="ePannelli",
         name="daily Solar energy",
         icon="mdi:solar-power-variant-outline",
-        #native_unit_of_measurement=POWER_WATT,
+        # native_unit_of_measurement=POWER_WATT,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -219,7 +209,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         key="eBatteria",
         name="Battery energy",
         icon="mdi:battery-charging-high",
-        #native_unit_of_measurement=POWER_WATT,
+        # native_unit_of_measurement=POWER_WATT,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -227,7 +217,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         key="eComprata",
         name="daily Energy bought",
         icon="mdi:transmission-tower-import",
-        #native_unit_of_measurement=POWER_WATT,
+        # native_unit_of_measurement=POWER_WATT,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -236,7 +226,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         name="Grid Voltage",
         icon="mdi:power-plug-outline",
         native_unit_of_measurement=ELECTRIC_POTENTIAL_VOLT,
-        device_class=SensorDeviceClass.VOLTAGE ,
+        device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
@@ -275,10 +265,11 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         key="numBatterie",
         name="Batteries number",
         icon="mdi:battery",
-        #device_class=SensorDeviceClass.NONE,
-        #state_class=SensorStateClass.MEASUREMENT,
+        # device_class=SensorDeviceClass.NONE,
+        # state_class=SensorStateClass.MEASUREMENT,
     ),
 )
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -320,7 +311,7 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
         controller: AtonStorage,
         coordinator,
         description: SensorEntityDescription,
-        #device_info,
+        # device_info,
     ):
         """Batched AtonStorage Sensor Entity constructor."""
         super().__init__(coordinator)
@@ -328,7 +319,7 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
         self.controller = controller
         self.entity_description = description
 
-        #self._attr_device_info = device_info
+        # self._attr_device_info = device_info
         self._entry = entry
         self._name = name
         self._attr_unique_id = f"{controller.serialNumber}_{description.key}"
@@ -341,10 +332,13 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
     def native_value(self):
         """Native sensor value."""
         value = self.controller.getRawData(self._register_key)
-        #if self.entity_description.value_conversion_function:
+        # if self.entity_description.value_conversion_function:
         #    value = self.entity_description.value_conversion_function(value)
-        if "data" in self._register_key.lower() or "timestamp" in self._register_key.lower():   #TODO: implement value_conversion_function
-            value = as_local(datetime.strptime(value, '%d/%m/%Y %H:%M:%S'))
+        if (
+            "data" in self._register_key.lower()
+            or "timestamp" in self._register_key.lower()
+        ):  # TODO: implement value_conversion_function
+            value = as_local(datetime.strptime(value, "%d/%m/%Y %H:%M:%S"))
 
         return value
 
@@ -352,16 +346,16 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
     def device_info(self):
         """Return device information about AtonStorage Controller."""
 
-        #v_model = controller.vbScheda | "Unkown"
-        #v_fw = controller.fwScheda | "Unkown"
-        #model = f"H.Store - ({ v_model })"
-        #firmware = f" ({ v_fw })"
+        # v_model = controller.vbScheda | "Unkown"
+        # v_fw = controller.fwScheda | "Unkown"
+        # model = f"H.Store - ({ v_model })"
+        # firmware = f" ({ v_fw })"
 
         return {
             "identifiers": {(DOMAIN, slugify(self._entry.unique_id))},
             "name": self._name,
             "manufacturer": "AtonStorage",
             "serial_number": self.controller.serialNumber,
-            #"model": model,
-            #"sw_version": firmware,
+            # "model": model,
+            # "sw_version": firmware,
         }

@@ -1,29 +1,21 @@
 """AtonStorage integration."""
 
 import logging
-from datetime import timedelta
-
-import async_timeout
 from collections.abc import Awaitable, Callable
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    CONF_DEVICE_ID,
-    CONF_SCAN_INTERVAL,
-    Platform,
-)
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.helpers.debounce import Debouncer
-from .controller import Controller as AtonStorage
+from datetime import timedelta
 from typing import TypeVar
 
-from .const import (
-    DEFAULT_SCAN_INTERVAL,
-    DOMAIN,
-)
+import async_timeout
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_DEVICE_ID, CONF_SCAN_INTERVAL, Platform
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.debounce import Debouncer
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
+from .controller import Controller as AtonStorage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +25,7 @@ PLATFORMS = [
 TIMEOUT = 10
 
 T = TypeVar("T")
+
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the atonStorage component from YAML."""
@@ -50,7 +43,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         controller = AtonStorage(hass, device, opts)
 
         scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-        coordinator = await _create_update_coordinator(hass, controller, device, timedelta(seconds=scan_interval))
+        coordinator = await _create_update_coordinator(
+            hass, controller, device, timedelta(seconds=scan_interval)
+        )
 
         hass.data[DOMAIN][entry.entry_id] = {
             "coordinator": coordinator,
@@ -68,11 +63,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Unload a config entry."""
-    unload_ok = await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        config_entry, PLATFORMS
+    )
     if unload_ok:
         hass.data[DOMAIN].pop(config_entry.entry_id)
 
     return unload_ok
+
 
 async def _create_update_coordinator(
     hass,
