@@ -40,9 +40,12 @@ class FlowHandler(ConfigFlow, domain=DOMAIN):
 
                 serial_number = user_input.get(CONF_DEVICE_ID, None)
                 name = user_input.get(CONF_NAME, DEFAULT_NAME)
-                # interval = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+                interval = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
 
-                opts = {"session": async_get_clientsession(self.hass)}
+                opts = {
+                    "session": async_get_clientsession(self.hass),
+                    "interval": interval,
+                }
                 controller = AtonStorage(self.hass, serial_number, opts)
                 await controller.refresh()
 

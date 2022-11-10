@@ -36,15 +36,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up AtonStorage from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
-    device = entry.data.get(CONF_DEVICE_ID)
+    serial_number = entry.data.get(CONF_DEVICE_ID)
+    scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
 
     try:
-        opts = {"session": async_get_clientsession(hass)}
-        controller = AtonStorage(hass, device, opts)
+        opts = {
+            "session": async_get_clientsession(hass),
+            "interval": scan_interval,
+        }
+        controller = AtonStorage(hass, serial_number, opts)
 
-        scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
         coordinator = await _create_update_coordinator(
-            hass, controller, device, timedelta(seconds=scan_interval)
+            hass, controller, serial_number, timedelta(seconds=scan_interval)
         )
 
         hass.data[DOMAIN][entry.entry_id] = {

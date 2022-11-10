@@ -5,8 +5,21 @@ import logging
 from homeassistant.components.rest.data import RestData
 from homeassistant.core import HomeAssistant
 
-_ENDPOINT = "https://www.atonstorage.com/atonTC/get_monitor.php?sn="
-# _ENDPOINT = "https://www.atonstorage.com/atonTC/get_monitor.php?sn={}&_={}"
+_BASEURL = "https://www.atonstorage.com/atonTC/"
+_MONITOR_ENDPOINT = _BASEURL + "get_monitor.php?sn={serialNumber}"
+_SET_REQUEST_ENDPOINT = (
+    _BASEURL + "set_request.php?request=MONITOR&intervallo={interval}&sn={serialNumber}"
+)
+# _ENDPOINT = "https://www.atonstorage.com/atonTC/get_monitor.php?sn={serialNumber}&_={timestamp}"
+# https://www.atonstorage.com/atonTC/set_request.php?sn=T19DE000868&request=MONITOR&intervallo=15&_={timestamp}
+# https://www.atonstorage.com/atonTC/getAlarmDesc.php?sn=T19DE000868&_={timestamp}
+# https://www.atonstorage.com/atonTC/hasExternalEV.php?id_impianto=151762966&_={timestamp}
+# https://www.atonstorage.com/atonTC/get_monitorToday.php?&sn=T19DE000868&_={timestamp}
+# https://www.atonstorage.com/atonTC/get_energy.php?anno=2022&mese=11&giorno=9&idImpianto=151762966&intervallo=d&potNom=3500&batNom=3500&sn=T19DE000868&_={timestamp}
+# https://www.atonstorage.com/atonTC/get_vbib.php?anno=2022&mese=11&sn=T19DE000868&_={timestamp}
+# https://www.atonstorage.com/atonTC/get_allarmi_oggi.php?sn=T19DE000868&idImpianto=151762966&tipoUtente=1&_={timestamp}
+# https://www.atonstorage.com/atonTC/checkTShift.php?sn=T19DE000868&_={timestamp}
+# https://www.atonstorage.com/atonTC/getTShift.php?sn=T19DE000868&_={timestamp}
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,23 +31,53 @@ class Controller:
 
     def __init__(self, hass: HomeAssistant, serialNumber, opts):
         """Initialize."""
-        self._serialNumber = serialNumber
-        self._opts = opts
-        self._rest = RestData(
-            hass, "GET", _ENDPOINT + serialNumber, None, {}, None, None, False, 60
-        )
+
         if serialNumber is None:
             raise SerialNumberRequiredError
 
+        self._serialNumber = serialNumber
+        self._opts = opts
+
+        self._monitor = RestData(
+            hass,
+            "GET",
+            _MONITOR_ENDPOINT.format(serialNumber=serialNumber),
+            None,
+            {},
+            None,
+            None,
+            False,
+            60,
+        )
+
+        self._set_interval = RestData(
+            hass,
+            "GET",
+            _SET_REQUEST_ENDPOINT.format(
+                serialNumber=serialNumber, interval=opts["interval"] | 15
+            ),
+            None,
+            {},
+            None,
+            None,
+            False,
+            60,
+        )
+
     async def refresh(self) -> None:
         try:
-            await self._rest.async_update()
+            await self._set_interval.async_update()  # set refresh interval
+            if self._set_interval.data is None:
+                _LOGGER.error("Unable to set refresh interval")
+                raise AtonStorageConnectionError
 
-            if self._rest.data is None:
+            await self._monitor.async_update()
+
+            if self._monitor.data is None:
                 _LOGGER.error("Unable to start fetching data")
                 raise AtonStorageConnectionError
 
-            json_dict = self._rest.data
+            json_dict = self._monitor.data
             if json_dict is not None:
                 try:
                     self.data = json.loads(json_dict)
