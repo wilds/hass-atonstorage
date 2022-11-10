@@ -1,6 +1,9 @@
 """AtonStorage integration."""
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -15,8 +18,9 @@ from homeassistant.const import (
     ELECTRIC_POTENTIAL_VOLT,
     FREQUENCY_HERTZ,
     PERCENTAGE,
-    POWER_WATT,
-    TEMP_CELSIUS,
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -30,62 +34,72 @@ from .controller import Controller as AtonStorage
 _LOGGER = logging.getLogger(__name__)
 
 
+@dataclass
+class AtonStorageSensorEntityDescription(SensorEntityDescription):
+    """Class to describe a AtonStorage sensor entity."""
+
+    value_conversion_function: Callable[[Any], Any] = lambda val: val
+
+
 INVERTER_SENSOR_DESCRIPTIONS = (
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="data",
         name="Date",
         icon="mdi:calendar-range",
         device_class=SensorDeviceClass.TIMESTAMP,
+        value_conversion_function=lambda value: as_local(
+            datetime.strptime(value, "%d/%m/%Y %H:%M:%S")
+        ),
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="pSolare",
         name="Instant solar power",
         icon="mdi:solar-power-variant",
-        native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="pUtenze",
         name="Instant user power",
         icon="mdi:home-lightning-bolt-outline",
-        native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="pBatteria",
         name="Instant battery power",
         icon="mdi:home-battery",
-        native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="pReteIn",
         name="Power grid input",
         icon="mdi:transmission-tower-import",
-        native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="pReteOut",
         name="Power grid output",
         icon="mdi:transmission-tower-export",
-        native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="pRete",
         name="Power grid",
         icon="mdi:transmission-tower",
-        native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="soc",
         name="State of battery",
         icon="mdi:battery-heart-variant",
@@ -93,7 +107,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="string1V",
         name="String1 Voltage",
         icon="mdi:solar-panel-large",
@@ -101,7 +115,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="string1I",
         name="String1 Current",
         icon="mdi:solar-panel-large",
@@ -109,7 +123,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="string2V",
         name="String2 Voltage",
         icon="mdi:solar-panel-large",
@@ -117,7 +131,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="string2I",
         name="String2 Current",
         icon="mdi:solar-panel-large",
@@ -125,7 +139,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="utenzeV",
         name="Utilities Voltage",
         icon="mdi:flash-triangle-outline",
@@ -133,7 +147,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="utenzeI",
         name="Utilities Current",
         icon="mdi:current-dc",
@@ -141,87 +155,95 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="ahCaricati",
         name="Current charged",
         icon="mdi:battery-plus-variant",
         native_unit_of_measurement="AH",
         # device_class=SensorDeviceClass.CURRENT,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="ahScaricati",
         name="Current discharged",
         icon="mdi:battery-minus-variant",
         native_unit_of_measurement="AH",
         # device_class=SensorDeviceClass.CURRENT,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="pMaxVenduta",
         name="Max power sold",
         icon="mdi:transmission-tower-export",
-        native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="pMaxPannelli",
         name="Panels max power",
         icon="mdi:solar-panel",
-        native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="pMaxBatteria",
         name="Battery max pawer",
         icon="mdi:battery-charging-100",
-        native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="pMaxComprata",
         name="Max power bought",
         icon="mdi:transmission-tower-import",
-        native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="eVenduta",
-        name="Energy sold",
+        name="Daily energy sold",
         icon="mdi:solar-power",
-        # native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_conversion_function=lambda value: int(value) / 1000,
+        # last_reset=as_local(datetime.combine(date.today(), datetime.min.time())),
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="ePannelli",
-        name="daily Solar energy",
+        name="Daily solar energy",
         icon="mdi:solar-power-variant-outline",
-        # native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_conversion_function=lambda value: int(value) / 1000,
+        # last_reset=as_local(datetime.combine(date.today(), datetime.min.time())),
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="eBatteria",
-        name="Battery energy",
+        name="Daily battery energy",
         icon="mdi:battery-charging-high",
-        # native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_conversion_function=lambda value: int(value) / 1000,
+        # last_reset=as_local(datetime.combine(date.today(), datetime.min.time())),
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="eComprata",
-        name="daily Energy bought",
+        name="Daily energy bought",
         icon="mdi:transmission-tower-import",
-        # native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_conversion_function=lambda value: int(value) / 1000,
+        # last_reset=as_local(datetime.combine(date.today(), datetime.min.time())),
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="gridV",
         name="Grid Voltage",
         icon="mdi:power-plug-outline",
@@ -229,7 +251,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="gridHz",
         name="Grid Frequency",
         icon="mdi:sine-wave",
@@ -237,31 +259,31 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.FREQUENCY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="pGrid",
         name="Instant Grid power",
         icon="mdi:transmission-tower",
-        native_unit_of_measurement=POWER_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="temperatura",
         name="Inverter Temperature",
         icon="mdi:thermometer-low",
-        native_unit_of_measurement=TEMP_CELSIUS,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="temperatura2",
         name="Temperature 2",
         icon="mdi:thermometer-low",
-        native_unit_of_measurement=TEMP_CELSIUS,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    AtonStorageSensorEntityDescription(
         key="numBatterie",
         name="Batteries number",
         icon="mdi:battery",
@@ -302,7 +324,7 @@ def _create_entities(hass: HomeAssistant, entry: dict):
 class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
     """AtonStorage Sensor which receives its data via an DataUpdateCoordinator."""
 
-    entity_description: SensorEntityDescription
+    entity_description: AtonStorageSensorEntityDescription
 
     def __init__(
         self,
@@ -310,7 +332,7 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
         name: str,
         controller: AtonStorage,
         coordinator,
-        description: SensorEntityDescription,
+        description: AtonStorageSensorEntityDescription,
         # device_info,
     ):
         """Batched AtonStorage Sensor Entity constructor."""
@@ -332,13 +354,8 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
     def native_value(self):
         """Native sensor value."""
         value = self.controller.getRawData(self._register_key)
-        # if self.entity_description.value_conversion_function:
-        #    value = self.entity_description.value_conversion_function(value)
-        if (
-            "data" in self._register_key.lower()
-            or "timestamp" in self._register_key.lower()
-        ):  # TODO: implement value_conversion_function
-            value = as_local(datetime.strptime(value, "%d/%m/%Y %H:%M:%S"))
+        if self.entity_description.value_conversion_function:
+            value = self.entity_description.value_conversion_function(value)
 
         return value
 
