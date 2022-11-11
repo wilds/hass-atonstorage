@@ -39,6 +39,7 @@ class AtonStorageSensorEntityDescription(SensorEntityDescription):
     """Class to describe a AtonStorage sensor entity."""
 
     value_conversion_function: Callable[[Any], Any] = lambda val: val
+    value_calc_function: Callable[[AtonStorage], Any] = None
 
 
 INVERTER_SENSOR_DESCRIPTIONS = (
@@ -172,6 +173,22 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     AtonStorageSensorEntityDescription(
+        key="vb",
+        name="Battery Voltage",
+        icon="mdi:current-dc",
+        native_unit_of_measurement=ELECTRIC_POTENTIAL_VOLT,
+        device_class=SensorDeviceClass.VOLTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    AtonStorageSensorEntityDescription(
+        key="ib",
+        name="Battery Current",
+        icon="mdi:current-dc",
+        native_unit_of_measurement=ELECTRIC_CURRENT_AMPERE,
+        device_class=SensorDeviceClass.CURRENT,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    AtonStorageSensorEntityDescription(
         key="pMaxVenduta",
         name="Max power sold",
         icon="mdi:transmission-tower-export",
@@ -189,7 +206,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
     ),
     AtonStorageSensorEntityDescription(
         key="pMaxBatteria",
-        name="Battery max pawer",
+        name="Battery max power",
         icon="mdi:battery-charging-100",
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
@@ -353,7 +370,12 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self):
         """Native sensor value."""
-        value = self.controller.getRawData(self._register_key)
+
+        if self.entity_description.value_calc_function:
+            value = self.entity_description.value_calc_function(self.controller)
+        else:
+            value = self.controller.getRawData(self._register_key)
+
         if self.entity_description.value_conversion_function:
             value = self.entity_description.value_conversion_function(value)
 

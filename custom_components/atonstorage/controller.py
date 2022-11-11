@@ -117,70 +117,75 @@ class Controller:
 
     @property
     def instantSolarPower(self) -> int:
-        return self.data["pSolare"]
+        return int(self.data["pSolare"])
 
     @property
     def instantUserPower(self) -> int:
-        return self.data["pUtenze"]
+        return int(self.data["pUtenze"])
 
     @property
     def instantUserPowerReal(self) -> int:
-        return self.data["pUtenzeReal"]
+        return int(self.data["pUtenzeReal"])
 
     @property
     def instantBatteryPower(self) -> int:
-        return self.data["pBatteria"]
+        return int(self.data["pBatteria"])
 
     @property
     def instantGridInputPower(self) -> int:
-        return self.data["pReteIn"]
+        return int(self.data["pReteIn"])
 
     @property
     def instantGridOutputPower(self) -> int:
-        return self.data["pReteOut"]
+        return int(self.data["pReteOut"])
 
     @property
     def instantGridPower(self) -> int:
-        return self.data["pRete"]
+        return int(self.data["pRete"])
 
     @property
     def instantGridPowerReal(self) -> int:
-        return self.data["pReteReal"]
+        return int(self.data["pReteReal"])
 
     @property
     def statusOfCharge(self) -> int:
-        return self.data["soc"]
+        return int(self.data["soc"])
 
     @property
     def runMode(self) -> int:
-        return self.data["runMode"]
+        return int(self.data["runMode"])
 
     @property
     def string1Current(self) -> float:
-        return self.data["string1I"]
+        return float(self.data["string1I"])
 
     @property
     def string1Voltage(self) -> float:
-        return self.data["string1V"]
+        return float(self.data["string1V"])
 
     @property
     def string2Current(self) -> float:
-        return self.data["string2I"]
+        return float(self.data["string2I"])
 
     @property
     def string2Voltage(self) -> float:
-        return self.data["string2V"]
+        return float(self.data["string2V"])
 
     @property
     def userCurrent(self) -> float:
-        return self.data["utenzeI"]
+        return float(self.data["utenzeI"])
 
     @property
     def userVoltage(self) -> float:
-        return self.data["utenzeV"]
+        return float(self.data["utenzeV"])
 
-    # "vb": "51.6",
-    # "ib": "28.1",
+    @property
+    def batteryVoltage(self) -> float:
+        return float(self.data["vb"])
+
+    @property
+    def batteryCurrent(self) -> float:
+        return float(self.data["ib"])
 
     @property
     def fwScheda(self) -> str:
@@ -203,12 +208,12 @@ class Controller:
         return self.data["relBIOS"]
 
     @property
-    def charged(self) -> str:
-        return self.data["ahCaricati"]
+    def charged(self) -> int:
+        return int(self.data["ahCaricati"])
 
     @property
-    def discharge(self) -> str:
-        return self.data["ahScaricati"]
+    def discharge(self) -> int:
+        return int(self.data["ahScaricati"])
 
     @property
     def maxSelledPower(self) -> int:
