@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from homeassistant.components.integration.sensor import IntegrationSensor
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -40,6 +41,13 @@ class AtonStorageSensorEntityDescription(SensorEntityDescription):
 
     value_conversion_function: Callable[[Any], Any] = lambda val: val
     value_calc_function: Callable[[AtonStorage], Any] = None
+
+
+@dataclass
+class AtonStorageIntegrationSensorEntityDescription(SensorEntityDescription):
+    """Class to describe a AtonStorage Integration sensor entity."""
+
+    source_sensor: str = None
 
 
 INVERTER_SENSOR_DESCRIPTIONS = (
@@ -307,6 +315,47 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         # device_class=SensorDeviceClass.NONE,
         # state_class=SensorStateClass.MEASUREMENT,
     ),
+    # Calculated values
+    AtonStorageSensorEntityDescription(
+        key="pBatteriaIn",
+        name="Instant battery power input",
+        icon="mdi:battery-plus-variant",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_calc_function=lambda controller: controller.instantBatteryPower
+        if controller.instantBatteryPower > 0
+        else 0,
+    ),
+    AtonStorageSensorEntityDescription(
+        key="pBatteriaOut",
+        name="Instant battery power output",
+        icon="mdi:battery-minus-variant",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_calc_function=lambda controller: abs(controller.instantBatteryPower)
+        if controller.instantBatteryPower < 0
+        else 0,
+    ),
+    AtonStorageIntegrationSensorEntityDescription(
+        key="eCharged",
+        name="Battery charged energy",
+        icon="mdi:battery",
+        # native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        # device_class=SensorDeviceClass.ENERGY,
+        # state_class=SensorStateClass.TOTAL_INCREASING,
+        source_sensor="sensor.instant_battery_power_input",
+    ),
+    AtonStorageIntegrationSensorEntityDescription(
+        key="eDischarged",
+        name="Battery discharged energy",
+        icon="mdi:battery",
+        # native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        # device_class=SensorDeviceClass.ENERGY,
+        # state_class=SensorStateClass.TOTAL_INCREASING,
+        source_sensor="sensor.instant_battery_power_output",
+    ),
 )
 
 
@@ -329,11 +378,33 @@ def _create_entities(hass: HomeAssistant, entry: dict):
     name = entry.data[CONF_NAME]
 
     for entity_description in INVERTER_SENSOR_DESCRIPTIONS:
-        entities.append(
-            AtonStorageSensorEntity(
-                entry, name, controller, coordinator, entity_description
+        if isinstance(entity_description, AtonStorageSensorEntityDescription):
+            entities.append(
+                AtonStorageSensorEntity(
+                    entry=entry,
+                    name=name,
+                    controller=controller,
+                    coordinator=coordinator,
+                    description=entity_description,
+                )
             )
-        )
+        elif isinstance(
+            entity_description, AtonStorageIntegrationSensorEntityDescription
+        ):
+            entities.append(
+                AtonStorageIntegrationSensor(
+                    integration_method="left",
+                    name=entity_description.name,
+                    round_digits=2,
+                    # source_entity=f"sensor.{controller.serialNumber}_{entity_description.source_sensor}",
+                    source_entity=entity_description.source_sensor,
+                    unique_id=f"{controller.serialNumber}_{entity_description.key}",
+                    unit_prefix="k",
+                    unit_time="h",
+                    entry=entry,
+                    controller=controller,
+                )
+            )
 
     return entities
 
@@ -380,6 +451,55 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
             value = self.entity_description.value_conversion_function(value)
 
         return value
+
+    @property
+    def device_info(self):
+        """Return device information about AtonStorage Controller."""
+
+        # v_model = controller.vbScheda | "Unkown"
+        # v_fw = controller.fwScheda | "Unkown"
+        # model = f"H.Store - ({ v_model })"
+        # firmware = f" ({ v_fw })"
+
+        return {
+            "identifiers": {(DOMAIN, slugify(self._entry.unique_id))},
+            "name": self._name,
+            "manufacturer": "AtonStorage",
+            "serial_number": self.controller.serialNumber,
+            # "model": model,
+            # "sw_version": firmware,
+        }
+
+
+class AtonStorageIntegrationSensor(IntegrationSensor):
+    """Representation of an integration sensor."""
+
+    def __init__(
+        self,
+        *,
+        integration_method: str,
+        name: str | None,
+        round_digits: int,
+        source_entity: str,
+        unique_id: str | None,
+        unit_prefix: str | None,
+        unit_time: str,
+        entry: ConfigEntry,
+        controller: AtonStorage,
+    ) -> None:
+        """Initialize the integration sensor."""
+        super().__init__(
+            integration_method=integration_method,
+            name=name,
+            round_digits=round_digits,
+            source_entity=source_entity,
+            unique_id=unique_id,
+            unit_prefix=unit_prefix,
+            unit_time=unit_time,
+        )
+        self.controller = controller
+        self._entry = entry
+        self._name = name
 
     @property
     def device_info(self):
