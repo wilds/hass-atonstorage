@@ -7,7 +7,13 @@ from typing import TypeVar
 
 import async_timeout
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_DEVICE_ID, CONF_SCAN_INTERVAL, Platform
+from homeassistant.const import (
+    CONF_DEVICE_ID,
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    CONF_USERNAME,
+    Platform,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -36,6 +42,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up AtonStorage from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
+    user = entry.data.get(CONF_USERNAME)
+    password = entry.data.get(CONF_PASSWORD)
     serial_number = entry.data.get(CONF_DEVICE_ID)
     scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
 
@@ -44,7 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             "session": async_get_clientsession(hass),
             "interval": scan_interval,
         }
-        controller = AtonStorage(hass, serial_number, opts)
+        controller = AtonStorage(hass, user, password, serial_number, opts)
 
         coordinator = await _create_update_coordinator(
             hass, controller, serial_number, timedelta(seconds=scan_interval)

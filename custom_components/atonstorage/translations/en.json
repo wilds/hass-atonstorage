@@ -13,6 +13,8 @@
       "user": {
         "data": {
           "name": "Device Name",
+          "username": "Username",
+          "password": "Password",
           "device_id": "Serial number",
           "scan_interval": "Scan interval"
         },
