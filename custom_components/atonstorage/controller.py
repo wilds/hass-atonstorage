@@ -27,8 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class Controller:
     """Define a generic AtonStorage sensor."""
-
-    _session = None
+    
     _data = None
     _hass: HomeAssistant = None
     _async_client = None
@@ -48,7 +47,7 @@ class Controller:
         self._password = password
         self._serial_number = serial_number
         self._opts = opts
-
+        self._session = None
         self._async_client = get_async_client(hass, verify_ssl=False)
 
     async def login(self) -> bool:
