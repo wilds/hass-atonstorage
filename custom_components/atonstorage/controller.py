@@ -27,7 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class Controller:
     """Define a generic AtonStorage sensor."""
-    
+
     _data = None
     _hass: HomeAssistant = None
     _async_client = None
@@ -52,7 +52,9 @@ class Controller:
 
     async def login(self) -> bool:
         """Login to Aton server."""
-        login = await self._async_client.get(_LOGIN_ENDPOINT, timeout=60)   # get inital cookie
+        login = await self._async_client.get(
+            _LOGIN_ENDPOINT, timeout=60
+        )  # get inital cookie
 
         login = await self._async_client.post(
             _LOGIN_ENDPOINT,
@@ -80,7 +82,7 @@ class Controller:
             set_interval = await self._async_client.get(
                 _SET_REQUEST_ENDPOINT.format(
                     serialNumber=self._serial_number,
-                    interval=self._opts["interval"] | 15
+                    interval=self._opts["interval"] | 15,
                 ),
                 timeout=60,
                 cookies=self._session,
