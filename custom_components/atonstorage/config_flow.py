@@ -59,7 +59,7 @@ class FlowHandler(ConfigFlow, domain=DOMAIN):
                 controller = AtonStorage(self.hass, user, password, serial_number, opts)
                 await controller.refresh()
 
-                await self.async_set_unique_id(slugify(controller.serialNumber))
+                await self.async_set_unique_id(slugify(controller.serial_number))
                 # await self.async_set_unique_id(slugify(serial_number))
                 # self._abort_if_unique_id_configured()
 
