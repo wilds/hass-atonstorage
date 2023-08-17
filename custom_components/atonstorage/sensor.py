@@ -222,7 +222,6 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         icon="mdi:transmission-tower-export",
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     AtonStorageSensorEntityDescription(
         key="pMaxPannelli",
@@ -231,7 +230,6 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         icon="mdi:solar-panel",
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     AtonStorageSensorEntityDescription(
         key="pMaxBatteria",
@@ -240,7 +238,6 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         icon="mdi:battery-charging-100",
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     AtonStorageSensorEntityDescription(
         key="pMaxComprata",
@@ -249,7 +246,6 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         icon="mdi:transmission-tower-import",
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     AtonStorageSensorEntityDescription(
         key="eVenduta",
@@ -469,7 +465,9 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
         # self._name = self.entity_description.name
         # self._attr_name = f"{controller.serial_number}_{self.entity_description.name}"
         # self._attr_translation_key = self.entity_description.key
-        self._attr_unique_id = f"{controller.serial_number}_{self.entity_description.key}"
+        self._attr_unique_id = (
+            f"{controller.serial_number}_{self.entity_description.key}"
+        )
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, slugify(entry.unique_id))},
             name=self.entity_description.name,
@@ -529,4 +527,3 @@ class AtonStorageIntegrationSensor(IntegrationSensor):
             name=name,
             manufacturer="AtonStorage",
         )
-
