@@ -6,12 +6,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.httpx_client import get_async_client
 
 _BASEURL = "https://www.atonstorage.com/atonTC/"
-_LOGIN_ENDPOINT = (
-    _BASEURL + "index.php"
-)
+_LOGIN_ENDPOINT = _BASEURL + "index.php"
 _MONITOR_ENDPOINT = _BASEURL + "get_monitor.php?sn={serial_number}"
 _SET_REQUEST_ENDPOINT = (
-    _BASEURL + "set_request.php?request=MONITOR&intervallo={interval}&sn={serial_number}"
+    _BASEURL
+    + "set_request.php?request=MONITOR&intervallo={interval}&sn={serial_number}"
 )
 # _ENDPOINT = "https://www.atonstorage.com/atonTC/get_monitor.php?sn={serialNumber}&_={timestamp}"
 # https://www.atonstorage.com/atonTC/set_request.php?sn=T19DE000868&request=MONITOR&intervallo=15&_={timestamp}
@@ -38,7 +37,7 @@ class Controller:
     def __init__(self, hass: HomeAssistant, user, password, serial_number, opts):
         """Initialize."""
 
-        #if user is None or password is None:
+        # if user is None or password is None:
         #    raise UsernameAndPasswordRequiredError
 
         if serial_number is None:
@@ -56,18 +55,16 @@ class Controller:
     async def login(self) -> bool:
         """Login to Aton server."""
 
-        login = await self._async_client.get(
-            _LOGIN_ENDPOINT, timeout=60
-        )
+        login = await self._async_client.get(_LOGIN_ENDPOINT, timeout=60)
 
         login = await self._async_client.post(
             _LOGIN_ENDPOINT,
             timeout=60,
-            data="username={user}&password={password}".format(user=self._user, password=self._password),
+            data="username={user}&password={password}".format(
+                user=self._user, password=self._password
+            ),
             cookies=login.cookies,
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
 
         if login.headers is not None and login.headers["Set-Cookie"] is not None:
@@ -79,7 +76,7 @@ class Controller:
     async def refresh(self) -> None:
         """Refresh data from server"""
 
-        if (self._session == None):
+        if self._session is None:
             login = await self.login()
             if not login:
                 raise InvalidUsernameOrPasswordError
