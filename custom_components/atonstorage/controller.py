@@ -9,7 +9,8 @@ _BASEURL = "https://www.atonstorage.com/atonTC/"
 _LOGIN_ENDPOINT = _BASEURL + "index.php"
 _MONITOR_ENDPOINT = _BASEURL + "get_monitor.php?sn={serial_number}"
 _SET_REQUEST_ENDPOINT = (
-    _BASEURL + "set_request.php?request=MONITOR&intervallo={interval}&sn={serial_number}"
+    _BASEURL
+    + "set_request.php?request=MONITOR&intervallo={interval}&sn={serial_number}"
 )
 # _ENDPOINT = "https://www.atonstorage.com/atonTC/get_monitor.php?sn={serialNumber}&_={timestamp}"
 # https://www.atonstorage.com/atonTC/set_request.php?sn=T19DE000868&request=MONITOR&intervallo=15&_={timestamp}
@@ -60,8 +61,7 @@ class Controller:
             _LOGIN_ENDPOINT,
             timeout=60,
             data="username={user}&password={password}".format(
-                user=self._user,
-                password=self._password
+                user=self._user, password=self._password
             ),
             cookies=login.cookies,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -76,7 +76,7 @@ class Controller:
     async def refresh(self) -> None:
         """Refresh data from server"""
 
-        if self._session == None:
+        if self._session is None:
             login = await self.login()
             if not login:
                 raise InvalidUsernameOrPasswordError
