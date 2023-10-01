@@ -14,7 +14,6 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    CONF_NAME,
     ELECTRIC_CURRENT_AMPERE,
     ELECTRIC_POTENTIAL_VOLT,
     FREQUENCY_HERTZ,
@@ -408,7 +407,7 @@ def _create_entities(hass: HomeAssistant, entry: dict):
 
     controller = hass.data[DOMAIN][entry.entry_id]["controller"]
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    name = entry.data[CONF_NAME]
+    # name = entry.data[CONF_NAME]
 
     for entity_description in INVERTER_SENSOR_DESCRIPTIONS:
         if isinstance(entity_description, AtonStorageSensorEntityDescription):
