@@ -6,16 +6,18 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.const import (
     CONF_DEVICE_ID,
-    CONF_NAME,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
     CONF_USERNAME,
+    CONF_MONITORED_VARIABLES,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import slugify
 
-from .const import DEFAULT_NAME, DEFAULT_SCAN_INTERVAL, DOMAIN
+from homeassistant.helpers import selector
+
+from .const import *
 from .controller import AtonStorageConnectionError
 from .controller import Controller as AtonStorage
 from .controller import SerialNumberRequiredError, UsernameAndPasswordRequiredError
@@ -27,8 +29,14 @@ DEVICE_SCHEMA = vol.Schema(
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
         vol.Required(CONF_DEVICE_ID): str,
-        vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
+        vol.Required(CONF_MONITORED_VARIABLES, default=AVAILABLE_SENSORS): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=AVAILABLE_SENSORS,
+                multiple=True,
+                mode=selector.SelectSelectorMode.LIST,
+            ),
+        ),
     }
 )
 
@@ -49,7 +57,7 @@ class FlowHandler(ConfigFlow, domain=DOMAIN):
                 user = user_input.get(CONF_USERNAME, None)
                 password = user_input.get(CONF_PASSWORD, None)
                 serial_number = user_input.get(CONF_DEVICE_ID, None)
-                name = user_input.get(CONF_NAME, DEFAULT_NAME)
+                name = f"{DEFAULT_NAME} {user}"
                 interval = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
 
                 opts = {

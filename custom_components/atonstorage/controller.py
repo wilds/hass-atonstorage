@@ -13,15 +13,15 @@ _SET_REQUEST_ENDPOINT = (
     + "set_request.php?request=MONITOR&intervallo={interval}&sn={serial_number}"
 )
 # _ENDPOINT = "https://www.atonstorage.com/atonTC/get_monitor.php?sn={serialNumber}&_={timestamp}"
-# https://www.atonstorage.com/atonTC/set_request.php?sn=T19DE000868&request=MONITOR&intervallo=15&_={timestamp}
-# https://www.atonstorage.com/atonTC/getAlarmDesc.php?sn=T19DE000868&_={timestamp}
+# https://www.atonstorage.com/atonTC/set_request.php?sn={serialNumber}&request=MONITOR&intervallo=15&_={timestamp}
+# https://www.atonstorage.com/atonTC/getAlarmDesc.php?sn={serialNumber}&_={timestamp}
 # https://www.atonstorage.com/atonTC/hasExternalEV.php?id_impianto=151762966&_={timestamp}
-# https://www.atonstorage.com/atonTC/get_monitorToday.php?&sn=T19DE000868&_={timestamp}
-# https://www.atonstorage.com/atonTC/get_energy.php?anno=2022&mese=11&giorno=9&idImpianto=151762966&intervallo=d&potNom=3500&batNom=3500&sn=T19DE000868&_={timestamp}
-# https://www.atonstorage.com/atonTC/get_vbib.php?anno=2022&mese=11&sn=T19DE000868&_={timestamp}
-# https://www.atonstorage.com/atonTC/get_allarmi_oggi.php?sn=T19DE000868&idImpianto=151762966&tipoUtente=1&_={timestamp}
-# https://www.atonstorage.com/atonTC/checkTShift.php?sn=T19DE000868&_={timestamp}
-# https://www.atonstorage.com/atonTC/getTShift.php?sn=T19DE000868&_={timestamp}
+# https://www.atonstorage.com/atonTC/get_monitorToday.php?&sn={serialNumber}&_={timestamp}
+# https://www.atonstorage.com/atonTC/get_energy.php?anno=2022&mese=11&giorno=9&idImpianto=151762966&intervallo=d&potNom=3500&batNom=3500&sn={serialNumber}&_={timestamp}
+# https://www.atonstorage.com/atonTC/get_vbib.php?anno=2022&mese=11&sn={serialNumber}&_={timestamp}
+# https://www.atonstorage.com/atonTC/get_allarmi_oggi.php?sn={serialNumber}&idImpianto=151762966&tipoUtente=1&_={timestamp}
+# https://www.atonstorage.com/atonTC/checkTShift.php?sn={serialNumber}&_={timestamp}
+# https://www.atonstorage.com/atonTC/getTShift.php?sn={serialNumber}&_={timestamp}
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -130,13 +130,45 @@ class Controller:
 
     def get_raw_data(self, __name: str):
         return self.data[__name]
+    
+    @property
+    def user(self) -> str:
+        return self._user
+
+    @property
+    def grid_to_house(self) -> bool:
+        return int(self.data["status"]) & 1 == 1
+    
+    @property
+    def solar_to_battery(self) -> bool:
+        return int(self.data["status"]) & 2 == 2
+    
+    @property
+    def solar_to_grid(self) -> bool:
+        return int(self.data["status"]) & 4 == 4
+    
+    @property
+    def battery_to_house(self) -> bool:
+        return int(self.data["status"]) & 8 == 8
+    
+    @property
+    def solar_to_house(self) -> bool:
+        return int(self.data["status"]) & 16 == 16
+    
+    @property
+    def grid_to_battery(self) -> bool:
+        return int(self.data["status"]) & 32 == 32
+    
+    @property
+    def battery_to_grid(self) -> bool:
+        return int(self.data["status"]) & 64 == 64
 
     @property
     def serial_number(self) -> str:
         return self.data["serialNumber"]
 
     @property
-    def current_date(self) -> str:
+    def last_update(self) -> str:
         return self.data["data"]
 
     @property
@@ -272,12 +304,16 @@ class Controller:
         return self.data["ePannelli"]
 
     @property
-    def battery_energy(self) -> int:
+    def self_consumed_energy(self) -> int:
         return self.data["eBatteria"]
 
     @property
     def bought_energy(self) -> int:
         return self.data["eComprata"]
+    
+    @property
+    def consumed_energy(self) -> int:
+        return int(self.bought_energy) + int(self.self_consumed_energy)
 
     # "ingressi1": "0",
     # "ingressi2": "160",
@@ -339,6 +375,11 @@ class Controller:
         return self.data["temperatura2"]
 
     # "dataAllarme": "07/11/2022 07:11:28",
+    
+    @property
+    def update_delay(self) -> int:
+        return self.data["DiffDate"]
+    
     # "DiffDate": "829",
     # "timestampScheda": "07/11/2022 11:13:13",
 
