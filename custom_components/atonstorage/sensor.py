@@ -57,7 +57,6 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         key="data",
         translation_key="data",
         name="Last update",
-        #icon="mdi:calendar-range",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_conversion_function=lambda value: as_local(
             datetime.strptime(value, "%d/%m/%Y %H:%M:%S")
