@@ -12,6 +12,7 @@ from homeassistant.const import (
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
     CONF_USERNAME,
+    CONF_MONITORED_VARIABLES,
     Platform,
 )
 from homeassistant.core import HomeAssistant
@@ -20,13 +21,14 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, AVAILABLE_SENSORS
 from .controller import Controller as AtonStorage
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [
     Platform.SENSOR,
+    Platform.BINARY_SENSOR,
 ]
 TIMEOUT = 10
 
@@ -46,6 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     password = entry.data.get(CONF_PASSWORD)
     serial_number = entry.data.get(CONF_DEVICE_ID)
     scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    sensors_selected = entry.data.get(CONF_MONITORED_VARIABLES, AVAILABLE_SENSORS)
 
     try:
         opts = {
@@ -61,6 +64,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass.data[DOMAIN][entry.entry_id] = {
             "coordinator": coordinator,
             "controller": controller,
+            "username": user,
+            "sensors_selected": sensors_selected,
         }
 
     except Exception as exc:
