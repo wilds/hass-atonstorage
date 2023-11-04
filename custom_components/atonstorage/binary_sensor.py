@@ -136,7 +136,7 @@ class AtonStorageBinarySensorEntity(CoordinatorEntity, BinarySensorEntity):
         self._attr_unique_id = f"{controller.serial_number}_{self.entity_description.key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, "AtonStorage " + username)},
-            name="Fotovoltaico " + username,
+            name=username,
             manufacturer="AtonStorage",
         )
 

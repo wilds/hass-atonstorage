@@ -240,7 +240,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         key="eVenduta",
         translation_key="eVenduta",
         name="Daily sold energy",
-        icon="mdi:transmission-tower-export",
+        icon="mdi:transmission-tower-import",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
@@ -251,7 +251,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         key="eComprata",
         translation_key="eComprata",
         name="Daily bought energy",
-        icon="mdi:transmission-tower-import",
+        icon="mdi:transmission-tower-export",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
@@ -286,7 +286,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         key="pRete_In",
         translation_key="pRete_In",
         name="Instant grid power input",
-        icon="mdi:transmission-tower-import",
+        icon="mdi:transmission-tower-export",
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
@@ -298,7 +298,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         key="pRete_Out",
         translation_key="pRete_Out",
         name="Instant grid power output",
-        icon="mdi:transmission-tower-export",
+        icon="mdi:transmission-tower-import",
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
@@ -458,7 +458,7 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = f"{controller.serial_number}_{self.entity_description.key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, "AtonStorage " + username)},
-            name="Fotovoltaico " + username,
+            name=username,
             manufacturer="AtonStorage",
         )
 
@@ -538,7 +538,7 @@ class AtonStorageIntegrationSensor(IntegrationSensor):
         self._name = name
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, "AtonStorage " + username)},
-            name="Fotovoltaico " + username,
+            name=username,
             manufacturer="AtonStorage",
         )
 
