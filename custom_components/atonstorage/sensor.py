@@ -23,7 +23,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
@@ -57,6 +57,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         translation_key="data",
         name="Last update",
         device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_conversion_function=lambda value: as_local(
             datetime.strptime(value, "%d/%m/%Y %H:%M:%S")
         ),
@@ -327,6 +328,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.POWER_FACTOR,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_calc_function=lambda controller: round(100 - ((int(controller.bought_energy) / int(controller.consumed_energy)) *100), 2),
     ),
     # BATTERY IN-OUT
