@@ -14,11 +14,11 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    ELECTRIC_CURRENT_AMPERE,
-    ELECTRIC_POTENTIAL_VOLT,
-    FREQUENCY_HERTZ,
     PERCENTAGE,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
     UnitOfEnergy,
+    UnitOfFrequency,
     UnitOfPower,
     UnitOfTemperature,
 )
@@ -77,7 +77,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         translation_key="vb",
         name="Battery voltage",
         icon="mdi:current-dc",
-        native_unit_of_measurement=ELECTRIC_POTENTIAL_VOLT,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -86,7 +86,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         translation_key="ib",
         name="Battery current",
         icon="mdi:current-dc",
-        native_unit_of_measurement=ELECTRIC_CURRENT_AMPERE,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -149,7 +149,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         translation_key="string1V",
         name="String1 voltage",
         icon="mdi:solar-panel-large",
-        native_unit_of_measurement=ELECTRIC_POTENTIAL_VOLT,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -158,7 +158,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         translation_key="string1I",
         name="String1 current",
         icon="mdi:solar-panel-large",
-        native_unit_of_measurement=ELECTRIC_CURRENT_AMPERE,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -168,7 +168,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         translation_key="string2V",
         name="String2 voltage",
         icon="mdi:solar-panel-large",
-        native_unit_of_measurement=ELECTRIC_POTENTIAL_VOLT,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -177,7 +177,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         translation_key="string2I",
         name="String2 current",
         icon="mdi:solar-panel-large",
-        native_unit_of_measurement=ELECTRIC_CURRENT_AMPERE,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -187,7 +187,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         translation_key="utenzeV",
         name="Utilities voltage",
         icon="mdi:current-ac",
-        native_unit_of_measurement=ELECTRIC_POTENTIAL_VOLT,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -196,7 +196,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         translation_key="utenzeI",
         name="Utilities current",
         icon="mdi:current-ac",
-        native_unit_of_measurement=ELECTRIC_CURRENT_AMPERE,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -206,7 +206,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         translation_key="gridV",
         name="Grid voltage",
         icon="mdi:current-ac",
-        native_unit_of_measurement=ELECTRIC_POTENTIAL_VOLT,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -214,7 +214,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         key="gridHz",
         translation_key="gridHz",
         name="Grid frequency",
-        native_unit_of_measurement=FREQUENCY_HERTZ,
+        native_unit_of_measurement=UnitOfFrequency.HERTZ,
         device_class=SensorDeviceClass.FREQUENCY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -397,7 +397,7 @@ def _create_entities(hass: HomeAssistant, entry: dict):
     username = hass.data[DOMAIN][entry.entry_id]["username"]
     sensors_selected = hass.data[DOMAIN][entry.entry_id]["sensors_selected"]
 
-    for entity_description in INVERTER_SENSOR_DESCRIPTIONS:  
+    for entity_description in INVERTER_SENSOR_DESCRIPTIONS:
         if entity_description.name in sensors_selected:
             if isinstance(entity_description, AtonStorageSensorEntityDescription):
                 entities.append(
@@ -531,7 +531,7 @@ class AtonStorageIntegrationSensor(IntegrationSensor):
             unit_prefix=unit_prefix,
             unit_time=unit_time,
         )
-        
+
         self.entity_description = description
         self.controller = controller
         self._entry = entry
@@ -545,7 +545,7 @@ class AtonStorageIntegrationSensor(IntegrationSensor):
     @property
     def icon(self):
         return self.entity_description.icon
-    
+
     @property
     def device_class(self):
         return self.entity_description.device_class
