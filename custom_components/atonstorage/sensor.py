@@ -327,7 +327,10 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.POWER_FACTOR,
         state_class=SensorStateClass.MEASUREMENT,
-        value_calc_function=lambda controller: round(100 - ((int(controller.bought_energy) / int(controller.consumed_energy)) *100), 2),
+        value_calc_function=lambda controller: (
+            100 if int(controller.consumed_energy) == 0
+            else round(100 - ((int(controller.bought_energy) / int(controller.consumed_energy)) *100), 2)
+        ),
     ),
     # BATTERY IN-OUT
     AtonStorageSensorEntityDescription(
