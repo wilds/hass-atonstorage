@@ -1,6 +1,9 @@
 """AtonStorage controller"""
 import json
 import logging
+import re
+
+from datetime import datetime
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.httpx_client import get_async_client
@@ -8,6 +11,7 @@ from homeassistant.helpers.httpx_client import get_async_client
 _BASEURL = "https://www.atonstorage.com/atonTC/"
 _LOGIN_ENDPOINT = _BASEURL + "index.php"
 _MONITOR_ENDPOINT = _BASEURL + "get_monitor.php?sn={serial_number}"
+_ENERGY_ENDPOINT = _BASEURL + "get_energy.php?idImpianto={id}&anno={year}&mese={month}&giorno={day}&intervallo=d"   #tot_pReteOut
 _SET_REQUEST_ENDPOINT = (
     _BASEURL
     + "set_request.php?request=MONITOR&intervallo={interval}&sn={serial_number}"
@@ -33,6 +37,7 @@ class Controller:
     data = None
     _hass: HomeAssistant = None
     _async_client = None
+    _id_plant = None
 
     def __init__(self, hass: HomeAssistant, user, password, serial_number, opts):
         """Initialize."""
@@ -48,6 +53,7 @@ class Controller:
         self._user = user
         self._password = password
         self._serial_number = serial_number
+        # self._id_plant = serial_number    #TODO
         self._opts = opts
         self._session = None
         self._async_client = get_async_client(hass, verify_ssl=False)
@@ -70,6 +76,14 @@ class Controller:
         if login.headers is not None and login.headers["Set-Cookie"] is not None:
             self._session = login.cookies
             _LOGGER.info("Logged in")
+
+            # get plant id
+            p = re.compile("var idImpianto = (.*);")
+            result = p.search(login.content.decode("utf-8"))
+            self._id_plant = result.group(1)
+            _LOGGER.info("idImpianto=%s", self._id_plant)
+
+
             return True
         return False
 
@@ -122,6 +136,42 @@ class Controller:
                     raise exc
             else:
                 _LOGGER.warning("Empty reply found when expecting JSON data")
+
+
+
+            # hack fix
+            if self._id_plant is not None:
+                energy = await self._async_client.get(
+                    _ENERGY_ENDPOINT.format(id=self._id_plant, year=datetime.now().year, month=datetime.now().month, day=datetime.now().day),
+                    timeout=60,
+                    cookies=self._session,
+                )
+                if energy.content is None:
+                    _LOGGER.error("Unable to start fetching data")
+                    raise AtonStorageConnectionError
+                elif energy.content == "Unauthorized":
+                    self._session = None
+                    raise AtonStorageConnectionError
+                json_dict_energy = energy.content
+                if json_dict_energy is not None:
+                    try:
+                        energy_data = json.loads(json_dict_energy)
+                        _LOGGER.debug("Data fetched from resource: %s", json_dict_energy)
+
+                        self.data["eVenduta"] = energy_data["tot_pReteOut"]
+
+                    except ValueError:
+                        _LOGGER.warning("REST result could not be parsed as JSON")
+                        _LOGGER.debug("Erroneous JSON: %s", self.data)
+                    except Exception as exc:
+                        _LOGGER.error(exc)
+                        raise exc
+                else:
+                    _LOGGER.warning("Empty reply found when expecting JSON data")
+
+
+
+
         except TypeError:
             _LOGGER.error("Unable to fetch data. Response: %s", self.data)
         except Exception as exc:
@@ -130,31 +180,31 @@ class Controller:
 
     def get_raw_data(self, __name: str):
         return self.data[__name]
-    
+
     @property
     def grid_to_house(self) -> bool:
         return int(self.data["status"]) & 1 == 1
-    
+
     @property
     def solar_to_battery(self) -> bool:
         return int(self.data["status"]) & 2 == 2
-    
+
     @property
     def solar_to_grid(self) -> bool:
         return int(self.data["status"]) & 4 == 4
-    
+
     @property
     def battery_to_house(self) -> bool:
         return int(self.data["status"]) & 8 == 8
-    
+
     @property
     def solar_to_house(self) -> bool:
         return int(self.data["status"]) & 16 == 16
-    
+
     @property
     def grid_to_battery(self) -> bool:
         return int(self.data["status"]) & 32 == 32
-    
+
     @property
     def battery_to_grid(self) -> bool:
         return int(self.data["status"]) & 64 == 64
@@ -196,7 +246,7 @@ class Controller:
         return int(self.data["pReteIn"])
 
     @property
-    def instantGridOutputPower(self) -> int:
+    def instant_grid_output_power(self) -> int:
         return int(self.data["pReteOut"])
 
     @property
@@ -208,8 +258,8 @@ class Controller:
         return int(self.data["pReteReal"])
 
     @property
-    def statusOfCharge(self) -> int:
-        return int(self.data["soc"])
+    def status_of_charge(self) -> float:
+        return float(self.data["soc"])
 
     @property
     def run_mode(self) -> int:
@@ -306,7 +356,7 @@ class Controller:
     @property
     def bought_energy(self) -> int:
         return self.data["eComprata"]
-    
+
     @property
     def consumed_energy(self) -> int:
         return int(self.bought_energy) + int(self.self_consumed_energy)
@@ -371,11 +421,11 @@ class Controller:
         return self.data["temperatura2"]
 
     # "dataAllarme": "07/11/2022 07:11:28",
-    
+
     @property
     def update_delay(self) -> int:
         return self.data["DiffDate"]
-    
+
     # "DiffDate": "829",
     # "timestampScheda": "07/11/2022 11:13:13",
 
