@@ -70,7 +70,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
         # Limit battery_level to a maximum of 100 and convert it to an integer
-        value_conversion_function=lambda value: min(100, int(value)),
+        value_conversion_function=lambda value: min(100, float(value)),
     ),
     AtonStorageSensorEntityDescription(
         key="vb",
