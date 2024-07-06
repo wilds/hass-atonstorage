@@ -538,6 +538,7 @@ class AtonStorageIntegrationSensor(IntegrationSensor):
             unique_id=unique_id,
             unit_prefix=unit_prefix,
             unit_time=unit_time,
+            max_sub_interval=None,
         )
 
         self.entity_description = description
