@@ -77,6 +77,35 @@ INVERTER_BINARY_SENSOR_DESCRIPTIONS = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_calc_function=lambda controller: controller.battery_to_grid
     ),
+    #EV
+    AtonStorageBinarySensorEntityDescription(
+        key="ev_status_off",
+        translation_key="ev_status_off",
+        name="EV OFF",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_calc_function=lambda controller: controller.ev_status_off
+    ),
+    AtonStorageBinarySensorEntityDescription(
+        key="ev_status_on",
+        translation_key="ev_status_on",
+        name="EV ON",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_calc_function=lambda controller: controller.ev_status_on
+    ),
+    AtonStorageBinarySensorEntityDescription(
+        key="ev_status_charge",
+        translation_key="ev_status_charge",
+        name="EV Charging",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_calc_function=lambda controller: controller.ev_status_charge
+    ),
+    AtonStorageBinarySensorEntityDescription(
+        key="ev_status_warning",
+        translation_key="ev_status_warning",
+        name="EV Warning",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_calc_function=lambda controller: controller.ev_status_warning
+    ),
 )
 
 

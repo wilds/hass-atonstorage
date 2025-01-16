@@ -381,6 +381,78 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         #state_class=SensorStateClass.TOTAL,
         source_sensor="instant_battery_power_output",
     ),
+
+    #EV
+    AtonStorageSensorEntityDescription(
+        key="num_EV",
+        translation_key="num_EV",
+        name="EV num",
+        #icon="mdi:solar-power-variant",
+    ),
+    AtonStorageSensorEntityDescription(
+        key="SoC_EV",
+        translation_key="SoC_EV",
+        name="EV Battery level",
+        native_unit_of_measurement=PERCENTAGE,
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+        # Limit battery_level to a maximum of 100 and convert it to an integer
+        value_conversion_function=lambda value: min(100, float(value)),
+    ),
+    #EV charge
+    AtonStorageSensorEntityDescription(
+        key="setp_EV",
+        translation_key="setp_EV",
+        name="EV setp",
+        icon="mdi:car-electric",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.CURRENT,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    AtonStorageSensorEntityDescription(
+        key="potenza_EV",
+        translation_key="potenza_EV",
+        name="EV Charge",
+        icon="mdi:car-electric",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    AtonStorageSensorEntityDescription(
+        key="kmh",
+        translation_key="kmh",
+        name="EV kmh",
+        icon="mdi:car-electric",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    #EV charged
+    AtonStorageSensorEntityDescription(
+        key="e_ciclo_EV",
+        translation_key="e_ciclo_EV",
+        name="EV Charged",
+        icon="mdi:car-electric",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_conversion_function=lambda value: float(value),
+    ),
+    AtonStorageSensorEntityDescription(
+        key="km",
+        translation_key="km",
+        name="EV km",
+        icon="mdi:car-electric",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    AtonStorageSensorEntityDescription(
+        key="perc_carica",
+        translation_key="perc_carica",
+        name="EV charged percentage",
+        icon="mdi:car-electric",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        # Limit battery_level to a maximum of 100 and convert it to an integer
+        value_conversion_function=lambda value: min(100, float(value)),
+    ),
 )
 
 

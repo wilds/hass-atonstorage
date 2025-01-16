@@ -445,16 +445,62 @@ class Controller:
     # "pReteL2": "0",
     # "pReteL3": "0",
 
-    # "SoC_EV": "0",
-    # "potenza_EV": "-1",
-    # "stato_EV": "-1",
-    # "e_ciclo_EV": "-1",
-    # "num_EV": "-1",
-    # "setp_EV": "-1",
 
-    # #"kmh": null,
-    # #"km": null,
-    # #"perc_carica": null,
+    @property
+    def ev_num(self) -> int:
+        return int(self.data["num_EV"])
+
+    @property
+    def ev_status_of_charge(self) -> float:
+        return float(self.data["SoC_EV"])
+
+    @property
+    def ev_status(self) -> int:
+        return int(self.data["stato_EV"])   #
+
+    #var firstNumber = (parseInt(_data.stato_EV)&0xf0)>>4;
+    #var secondNumber = parseInt(_data.stato_EV)&0x0f;
+
+    @property
+    def ev_status_off(self) -> bool:
+        return int(self.data["stato_EV"]) & 0xF0 >> 4 == 0 or (int(self.data["stato_EV"]) & 0xF0 >> 4 == 1 and int(self.data["stato_EV"]) & 0x0F != 3)
+
+    @property
+    def ev_status_on(self) -> bool:
+        return int(self.data["stato_EV"]) & 0xF0 >> 4 == 1 and int(self.data["stato_EV"]) & 0x0F == 3
+
+    @property
+    def ev_status_charge(self) -> bool:
+        return int(self.data["stato_EV"]) & 0xF0 >> 4 == 2
+
+    @property
+    def ev_status_warning(self) -> bool:
+        return int(self.data["stato_EV"]) & 0xF0 >> 4 == 4 or int(self.data["stato_EV"]) & 0xF0 >> 4 == 5
+
+    @property
+    def ev_setp(self) -> float:
+        return float(self.data["setp_EV"])  # in A
+
+    @property
+    def ev_power(self) -> int:
+        return int(self.data["potenza_EV"]) #carica in W
+
+    @property
+    def ev_kmh(self) -> float:
+        return float(self.data["kmh"])  #evCaricakmh km/h
+
+    @property
+    def ev_e_ciclo_(self) -> float:
+        return float(self.data["e_ciclo_EV"])   #evScaricakWh
+
+    @property
+    def ev_km(self) -> float:
+        return float(self.data["km"])  #evScaricakm km
+
+    @property
+    def ev_perc_carica(self) -> float:
+        return float(self.data["perc_carica"])  #evCaricakmh %
+
     # "paese": "IT",
     # "scena": "0",
     # "qeps": "1",
