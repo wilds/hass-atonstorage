@@ -33,78 +33,78 @@ INVERTER_BINARY_SENSOR_DESCRIPTIONS = (
         translation_key="grid_to_house",
         name="Grid to House",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_calc_function=lambda controller: controller.grid_to_house
+        value_calc_function=lambda controller: controller.grid_to_house,
     ),
     AtonStorageBinarySensorEntityDescription(
         key="solar_to_battery",
         translation_key="solar_to_battery",
         name="Solar to Battery",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_calc_function=lambda controller: controller.solar_to_battery
+        value_calc_function=lambda controller: controller.solar_to_battery,
     ),
     AtonStorageBinarySensorEntityDescription(
         key="solar_to_grid",
         translation_key="solar_to_grid",
         name="Solar to Grid",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_calc_function=lambda controller: controller.solar_to_grid
+        value_calc_function=lambda controller: controller.solar_to_grid,
     ),
     AtonStorageBinarySensorEntityDescription(
         key="battery_to_house",
         translation_key="battery_to_house",
         name="Battery to House",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_calc_function=lambda controller: controller.battery_to_house
+        value_calc_function=lambda controller: controller.battery_to_house,
     ),
     AtonStorageBinarySensorEntityDescription(
         key="solar_to_house",
         translation_key="solar_to_house",
         name="Solar to House",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_calc_function=lambda controller: controller.solar_to_house
+        value_calc_function=lambda controller: controller.solar_to_house,
     ),
     AtonStorageBinarySensorEntityDescription(
         key="grid_to_battery",
         translation_key="grid_to_battery",
         name="Grid to Battery",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_calc_function=lambda controller: controller.grid_to_battery
+        value_calc_function=lambda controller: controller.grid_to_battery,
     ),
     AtonStorageBinarySensorEntityDescription(
         key="battery_to_grid",
         translation_key="battery_to_grid",
         name="Batter to Grid",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_calc_function=lambda controller: controller.battery_to_grid
+        value_calc_function=lambda controller: controller.battery_to_grid,
     ),
-    #EV
+    # EV
     AtonStorageBinarySensorEntityDescription(
         key="ev_status_off",
         translation_key="ev_status_off",
         name="EV OFF",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_calc_function=lambda controller: controller.ev_status_off
+        value_calc_function=lambda controller: controller.ev_status_off,
     ),
     AtonStorageBinarySensorEntityDescription(
         key="ev_status_on",
         translation_key="ev_status_on",
         name="EV ON",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_calc_function=lambda controller: controller.ev_status_on
+        value_calc_function=lambda controller: controller.ev_status_on,
     ),
     AtonStorageBinarySensorEntityDescription(
         key="ev_status_charge",
         translation_key="ev_status_charge",
         name="EV Charging",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_calc_function=lambda controller: controller.ev_status_charge
+        value_calc_function=lambda controller: controller.ev_status_charge,
     ),
     AtonStorageBinarySensorEntityDescription(
         key="ev_status_warning",
         translation_key="ev_status_warning",
         name="EV Warning",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_calc_function=lambda controller: controller.ev_status_warning
+        value_calc_function=lambda controller: controller.ev_status_warning,
     ),
 )
 
@@ -169,14 +169,15 @@ class AtonStorageBinarySensorEntity(CoordinatorEntity, BinarySensorEntity):
         # self._attr_name = f"{controller.serial_number}_{self.entity_description.name}"
         # self._attr_translation_key = self.entity_description.key
         self._attr_name = f"{username} {self.entity_description.name}"
-        self._attr_unique_id = f"{controller.serial_number}_{self.entity_description.key}"
+        self._attr_unique_id = (
+            f"{controller.serial_number}_{self.entity_description.key}"
+        )
         self._attr_device_info = DeviceInfo(
-            identifiers = {(DOMAIN, "AtonStorage " + username)},
-            name = username,
-            manufacturer = "AtonStorage",
-            sw_version =  controller.fw_Scheda,
-            serial_number = controller.serial_number,
-
+            identifiers={(DOMAIN, "AtonStorage " + username)},
+            name=username,
+            manufacturer="AtonStorage",
+            sw_version=controller.fw_Scheda,
+            serial_number=controller.serial_number,
         )
 
         self._register_key = self.entity_description.key

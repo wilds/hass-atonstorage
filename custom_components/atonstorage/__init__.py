@@ -9,10 +9,10 @@ import async_timeout
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_DEVICE_ID,
+    CONF_MONITORED_VARIABLES,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
     CONF_USERNAME,
-    CONF_MONITORED_VARIABLES,
     Platform,
 )
 from homeassistant.core import HomeAssistant
@@ -21,7 +21,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, AVAILABLE_SENSORS
+from .const import AVAILABLE_SENSORS, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .controller import Controller as AtonStorage
 
 _LOGGER = logging.getLogger(__name__)

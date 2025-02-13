@@ -2,7 +2,6 @@
 import json
 import logging
 import re
-
 from datetime import datetime
 
 from homeassistant.core import HomeAssistant
@@ -11,7 +10,10 @@ from homeassistant.helpers.httpx_client import get_async_client
 _BASEURL = "https://www.atonstorage.com/atonTC/"
 _LOGIN_ENDPOINT = _BASEURL + "index.php"
 _MONITOR_ENDPOINT = _BASEURL + "get_monitor.php?sn={serial_number}"
-_ENERGY_ENDPOINT = _BASEURL + "get_energy.php?idImpianto={id}&anno={year}&mese={month}&giorno={day}&intervallo=d"   #tot_pReteOut
+_ENERGY_ENDPOINT = (
+    _BASEURL
+    + "get_energy.php?idImpianto={id}&anno={year}&mese={month}&giorno={day}&intervallo=d"
+)  # tot_pReteOut
 _SET_REQUEST_ENDPOINT = (
     _BASEURL
     + "set_request.php?request=MONITOR&intervallo={interval}&sn={serial_number}"
@@ -83,7 +85,6 @@ class Controller:
             self._id_plant = result.group(1)
             _LOGGER.info("idImpianto=%s", self._id_plant)
 
-
             return True
         return False
 
@@ -137,12 +138,15 @@ class Controller:
             else:
                 _LOGGER.warning("Empty reply found when expecting JSON data")
 
-
-
             # hack fix
             if self._id_plant is not None:
                 energy = await self._async_client.get(
-                    _ENERGY_ENDPOINT.format(id=self._id_plant, year=datetime.now().year, month=datetime.now().month, day=datetime.now().day),
+                    _ENERGY_ENDPOINT.format(
+                        id=self._id_plant,
+                        year=datetime.now().year,
+                        month=datetime.now().month,
+                        day=datetime.now().day,
+                    ),
                     timeout=60,
                     cookies=self._session,
                 )
@@ -156,7 +160,9 @@ class Controller:
                 if json_dict_energy is not None:
                     try:
                         energy_data = json.loads(json_dict_energy)
-                        _LOGGER.debug("Data fetched from resource: %s", json_dict_energy)
+                        _LOGGER.debug(
+                            "Data fetched from resource: %s", json_dict_energy
+                        )
 
                         self.data["eVenduta"] = energy_data["tot_pReteOut"]
 
@@ -168,9 +174,6 @@ class Controller:
                         raise exc
                 else:
                     _LOGGER.warning("Empty reply found when expecting JSON data")
-
-
-
 
         except TypeError:
             _LOGGER.error("Unable to fetch data. Response: %s", self.data)
@@ -445,7 +448,6 @@ class Controller:
     # "pReteL2": "0",
     # "pReteL3": "0",
 
-
     @property
     def ev_num(self) -> int:
         return int(self.data["num_EV"])
@@ -456,18 +458,24 @@ class Controller:
 
     @property
     def ev_status(self) -> int:
-        return int(self.data["stato_EV"])   #
+        return int(self.data["stato_EV"])
 
-    #var firstNumber = (parseInt(_data.stato_EV)&0xf0)>>4;
-    #var secondNumber = parseInt(_data.stato_EV)&0x0f;
+    # var firstNumber = (parseInt(_data.stato_EV)&0xf0)>>4;
+    # var secondNumber = parseInt(_data.stato_EV)&0x0f;
 
     @property
     def ev_status_off(self) -> bool:
-        return int(self.data["stato_EV"]) & 0xF0 >> 4 == 0 or (int(self.data["stato_EV"]) & 0xF0 >> 4 == 1 and int(self.data["stato_EV"]) & 0x0F != 3)
+        return int(self.data["stato_EV"]) & 0xF0 >> 4 == 0 or (
+            int(self.data["stato_EV"]) & 0xF0 >> 4 == 1
+            and int(self.data["stato_EV"]) & 0x0F != 3
+        )
 
     @property
     def ev_status_on(self) -> bool:
-        return int(self.data["stato_EV"]) & 0xF0 >> 4 == 1 and int(self.data["stato_EV"]) & 0x0F == 3
+        return (
+            int(self.data["stato_EV"]) & 0xF0 >> 4 == 1
+            and int(self.data["stato_EV"]) & 0x0F == 3
+        )
 
     @property
     def ev_status_charge(self) -> bool:
@@ -475,7 +483,10 @@ class Controller:
 
     @property
     def ev_status_warning(self) -> bool:
-        return int(self.data["stato_EV"]) & 0xF0 >> 4 == 4 or int(self.data["stato_EV"]) & 0xF0 >> 4 == 5
+        return (
+            int(self.data["stato_EV"]) & 0xF0 >> 4 == 4
+            or int(self.data["stato_EV"]) & 0xF0 >> 4 == 5
+        )
 
     @property
     def ev_setp(self) -> float:
@@ -483,23 +494,23 @@ class Controller:
 
     @property
     def ev_power(self) -> int:
-        return int(self.data["potenza_EV"]) #carica in W
+        return int(self.data["potenza_EV"])  # carica in W
 
     @property
     def ev_kmh(self) -> float:
-        return float(self.data["kmh"])  #evCaricakmh km/h
+        return float(self.data["kmh"])  # evCaricakmh km/h
 
     @property
     def ev_e_ciclo_(self) -> float:
-        return float(self.data["e_ciclo_EV"])   #evScaricakWh
+        return float(self.data["e_ciclo_EV"])  # evScaricakWh
 
     @property
     def ev_km(self) -> float:
-        return float(self.data["km"])  #evScaricakm km
+        return float(self.data["km"])  # evScaricakm km
 
     @property
     def ev_perc_carica(self) -> float:
-        return float(self.data["perc_carica"])  #evCaricakmh %
+        return float(self.data["perc_carica"])  # evCaricakmh %
 
     # "paese": "IT",
     # "scena": "0",

@@ -5,19 +5,20 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import HANDLERS, ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.const import (
+    AVAILABLE_SENSORS,
     CONF_DEVICE_ID,
+    CONF_MONITORED_VARIABLES,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
     CONF_USERNAME,
-    CONF_MONITORED_VARIABLES,
+    DEFAULT_NAME,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
 )
-from homeassistant.core import callback
+from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import slugify
 
-from homeassistant.helpers import selector
-
-from .const import *
 from .controller import AtonStorageConnectionError
 from .controller import Controller as AtonStorage
 from .controller import SerialNumberRequiredError, UsernameAndPasswordRequiredError
@@ -30,7 +31,9 @@ DEVICE_SCHEMA = vol.Schema(
         vol.Required(CONF_PASSWORD): str,
         vol.Required(CONF_DEVICE_ID): str,
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
-        vol.Required(CONF_MONITORED_VARIABLES, default=AVAILABLE_SENSORS): selector.SelectSelector(
+        vol.Required(
+            CONF_MONITORED_VARIABLES, default=AVAILABLE_SENSORS
+        ): selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=AVAILABLE_SENSORS,
                 multiple=True,
@@ -107,9 +110,7 @@ class OptionsFlowHandler(OptionsFlow):
         return self.hass.config_entries.async_get_entry(self.handler)
 
     def __init__(self, config_entry: ConfigEntry):
-        #self.config_entry = config_entry
         self.options = dict(config_entry.options)
-
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""

@@ -40,9 +40,9 @@ AVAILABLE_SENSORS = [
     "Inverter temperature",
     "Temperature 2",
     "EV num",
-    "EV Battery level"
-    "EV setp"
-    "EV Charge"
+    "EV Battery level",
+    "EV setp",
+    "EV Charge",
     "EV kmh",
     "EV Charged",
     "EV km",

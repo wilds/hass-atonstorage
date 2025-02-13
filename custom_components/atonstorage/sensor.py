@@ -282,7 +282,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         value_conversion_function=lambda value: int(value) / 1000,
         # last_reset=as_local(datetime.combine(date.today(), datetime.min.time())),
     ),
-    ### CALCULATED VALUES ###
+    # CALCULATED VALUES #
     # GRID IN-OUT
     AtonStorageSensorEntityDescription(
         key="pRete_In",
@@ -313,7 +313,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         key="eConsumed",
         translation_key="eConsumed",
         name="Daily consumed energy",
-        #icon="mdi:home-battery",
+        # icon="mdi:home-battery",
         icon="mdi:home-lightning-bolt",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
@@ -331,8 +331,16 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_calc_function=lambda controller: (
-            100 if int(controller.consumed_energy) == 0
-            else round(100 - ((int(controller.bought_energy) / int(controller.consumed_energy)) *100), 2)
+            100
+            if int(controller.consumed_energy) == 0
+            else round(
+                100
+                - (
+                    (int(controller.bought_energy) / int(controller.consumed_energy))
+                    * 100
+                ),
+                2,
+            )
         ),
     ),
     # BATTERY IN-OUT
@@ -366,9 +374,9 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         translation_key="eCharged",
         name="Battery charged energy",
         icon="mdi:battery-plus",
-        #native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        # native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
-        #state_class=SensorStateClass.TOTAL,
+        # state_class=SensorStateClass.TOTAL,
         source_sensor="instant_battery_power_input",
     ),
     AtonStorageIntegrationSensorEntityDescription(
@@ -376,18 +384,17 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         translation_key="eDischarged",
         name="Battery discharged energy",
         icon="mdi:battery-minus",
-        #native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        # native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
-        #state_class=SensorStateClass.TOTAL,
+        # state_class=SensorStateClass.TOTAL,
         source_sensor="instant_battery_power_output",
     ),
-
-    #EV
+    # EV
     AtonStorageSensorEntityDescription(
         key="num_EV",
         translation_key="num_EV",
         name="EV num",
-        #icon="mdi:solar-power-variant",
+        # icon="mdi:solar-power-variant",
     ),
     AtonStorageSensorEntityDescription(
         key="SoC_EV",
@@ -399,7 +406,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         # Limit battery_level to a maximum of 100 and convert it to an integer
         value_conversion_function=lambda value: min(100, float(value)),
     ),
-    #EV charge
+    # EV charge
     AtonStorageSensorEntityDescription(
         key="setp_EV",
         translation_key="setp_EV",
@@ -425,7 +432,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         icon="mdi:car-electric",
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    #EV charged
+    # EV charged
     AtonStorageSensorEntityDescription(
         key="e_ciclo_EV",
         translation_key="e_ciclo_EV",
@@ -487,7 +494,9 @@ def _create_entities(hass: HomeAssistant, entry: dict):
                         username=username,
                     )
                 )
-            elif isinstance(entity_description, AtonStorageIntegrationSensorEntityDescription):
+            elif isinstance(
+                entity_description, AtonStorageIntegrationSensorEntityDescription
+            ):
                 entities.append(
                     AtonStorageIntegrationSensor(
                         integration_method="left",
@@ -533,13 +542,15 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
         # self._attr_name = f"{controller.serial_number}_{self.entity_description.name}"
         # self._attr_translation_key = self.entity_description.key
         self._attr_name = f"{username} {self.entity_description.name}"
-        self._attr_unique_id = f"{controller.serial_number}_{self.entity_description.key}"
+        self._attr_unique_id = (
+            f"{controller.serial_number}_{self.entity_description.key}"
+        )
         self._attr_device_info = DeviceInfo(
-            identifiers = {(DOMAIN, "AtonStorage " + username)},
-            name = username,
-            manufacturer = "AtonStorage",
-            sw_version =  controller.fw_Scheda,
-            serial_number = controller.serial_number,
+            identifiers={(DOMAIN, "AtonStorage " + username)},
+            name=username,
+            manufacturer="AtonStorage",
+            sw_version=controller.fw_Scheda,
+            serial_number=controller.serial_number,
         )
 
         self._register_key = self.entity_description.key
@@ -618,12 +629,11 @@ class AtonStorageIntegrationSensor(IntegrationSensor):
         self._entry = entry
         self._name = name
         self._attr_device_info = DeviceInfo(
-            identifiers = {(DOMAIN, "AtonStorage " + username)},
-            name = username,
-            manufacturer = "AtonStorage",
-            sw_version =  controller.fw_Scheda,
-            serial_number = controller.serial_number,
-
+            identifiers={(DOMAIN, "AtonStorage " + username)},
+            name=username,
+            manufacturer="AtonStorage",
+            sw_version=controller.fw_Scheda,
+            serial_number=controller.serial_number,
         )
 
     @property
