@@ -3,7 +3,7 @@ import logging
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
+from homeassistant.config_entries import HANDLERS, ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.const import (
     CONF_DEVICE_ID,
     CONF_PASSWORD,
@@ -41,6 +41,7 @@ DEVICE_SCHEMA = vol.Schema(
 )
 
 
+@HANDLERS.register(DOMAIN)
 class FlowHandler(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for AtonStorage."""
 
@@ -96,14 +97,19 @@ class FlowHandler(ConfigFlow, domain=DOMAIN):
     #    return await self.async_step_user(user_input)
 
     @staticmethod
-    @callback
     def async_get_options_flow(config_entry: ConfigEntry):
         return OptionsFlowHandler(config_entry)
 
 
 class OptionsFlowHandler(OptionsFlow):
+    @property
+    def config_entry(self):
+        return self.hass.config_entries.async_get_entry(self.handler)
+
     def __init__(self, config_entry: ConfigEntry):
-        self.config_entry = config_entry
+        #self.config_entry = config_entry
+        self.options = dict(config_entry.options)
+
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""
