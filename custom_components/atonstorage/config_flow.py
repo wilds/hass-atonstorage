@@ -5,20 +5,17 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import HANDLERS, ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.const import (
-    AVAILABLE_SENSORS,
     CONF_DEVICE_ID,
     CONF_MONITORED_VARIABLES,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
     CONF_USERNAME,
-    DEFAULT_NAME,
-    DEFAULT_SCAN_INTERVAL,
-    DOMAIN,
 )
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import slugify
 
+from .const import AVAILABLE_SENSORS, DEFAULT_NAME, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .controller import AtonStorageConnectionError
 from .controller import Controller as AtonStorage
 from .controller import SerialNumberRequiredError, UsernameAndPasswordRequiredError
