@@ -71,7 +71,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
         # Limit battery_level to a maximum of 100 and convert it to an integer
-        value_conversion_function=lambda value: min(100, float(value)),
+        value_conversion_function=lambda value: min(100, float(value) if value else 0),
     ),
     AtonStorageSensorEntityDescription(
         key="vb",
@@ -404,7 +404,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
         # Limit battery_level to a maximum of 100 and convert it to an integer
-        value_conversion_function=lambda value: min(100, float(value)),
+        value_conversion_function=lambda value: min(100, float(value) if value else 0),
     ),
     # EV charge
     AtonStorageSensorEntityDescription(
@@ -458,7 +458,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         # Limit battery_level to a maximum of 100 and convert it to an integer
-        value_conversion_function=lambda value: min(100, float(value)),
+        value_conversion_function=lambda value: min(100, float(value) if value else 0),
     ),
 )
 
