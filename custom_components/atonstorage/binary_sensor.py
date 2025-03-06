@@ -73,7 +73,7 @@ INVERTER_BINARY_SENSOR_DESCRIPTIONS = (
     AtonStorageBinarySensorEntityDescription(
         key="battery_to_grid",
         translation_key="battery_to_grid",
-        name="Batter to Grid",
+        name="Battery to Grid",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_calc_function=lambda controller: controller.battery_to_grid,
     ),
