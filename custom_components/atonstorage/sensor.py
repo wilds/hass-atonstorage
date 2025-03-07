@@ -441,7 +441,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
-        value_conversion_function=lambda value: float(value),
+        value_conversion_function=lambda value: max(0, float(value)),
     ),
     AtonStorageSensorEntityDescription(
         key="km",
