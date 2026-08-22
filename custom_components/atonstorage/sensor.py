@@ -278,6 +278,9 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         value_conversion_function=lambda value: int(value) / 1000,
         # last_reset=as_local(datetime.combine(date.today(), datetime.min.time())),
     ),
+    # Daily counter, reset to 0 by the plant at midnight. TOTAL_INCREASING lets the
+    # statistics engine detect that reset; TOTAL would need a last_reset attribute,
+    # which this integration does not publish.
     AtonStorageSensorEntityDescription(
         key="tot_pBatteria",
         translation_key="tot_pBatteria",
@@ -285,8 +288,11 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         icon="mdi:battery-plus",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
+    # Daily counter, reset to 0 by the plant at midnight. TOTAL_INCREASING lets the
+    # statistics engine detect that reset; TOTAL would need a last_reset attribute,
+    # which this integration does not publish.
     AtonStorageSensorEntityDescription(
         key="tot_pBatteriaB",
         translation_key="tot_pBatteriaB",
@@ -294,7 +300,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         icon="mdi:battery-minus",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     # CALCULATED VALUES #
     # GRID IN-OUT
