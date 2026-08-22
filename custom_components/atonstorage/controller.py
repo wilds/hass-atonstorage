@@ -2,10 +2,10 @@
 import json
 import logging
 import re
-from datetime import datetime
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.httpx_client import get_async_client
+from homeassistant.util import dt as dt_util
 
 _BASEURL = "https://www.atonstorage.com/atonTC/"
 _LOGIN_ENDPOINT = _BASEURL + "index.php"
@@ -144,12 +144,16 @@ class Controller:
                 _LOGGER.error(f"Unable to get plant id. Response: {monitor_response.content}") 
                 return
                 
+            # Read the clock once, in Home Assistant's configured timezone: three
+            # separate now() calls can straddle midnight and build a date whose
+            # year/month/day come from different days.
+            now = dt_util.now()
             energy_response = await self._async_client.get(
                 _ENERGY_ENDPOINT.format(
                     id=self._plant_id,
-                    year=datetime.now().year,
-                    month=datetime.now().month,
-                    day=datetime.now().day,
+                    year=now.year,
+                    month=now.month,
+                    day=now.day,
                 ),
                 timeout=60,
                 cookies=self._session,
