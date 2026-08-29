@@ -33,6 +33,16 @@ from .controller import Controller as AtonStorage
 _LOGGER = logging.getLogger(__name__)
 
 
+def _plant_timestamp(value):
+    """Parse a dd/mm/YYYY HH:MM:SS stamp, tolerating an empty or bad one."""
+    if not value:
+        return None
+    try:
+        return as_local(datetime.strptime(value, "%d/%m/%Y %H:%M:%S"))
+    except (TypeError, ValueError):
+        return None
+
+
 @dataclass
 class AtonStorageSensorEntityDescription(SensorEntityDescription):
     """Class to describe a AtonStorage sensor entity."""
@@ -448,6 +458,138 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         # Limit battery_level to a maximum of 100 and convert it to an integer
         value_conversion_function=lambda value: min(100, float(value) if value else 0),
     ),
+    # ADDED IN 1.0.12, from fields the payload always carried but nothing read.
+    # Three independent state of charge readings the plant reports side by side.
+    AtonStorageSensorEntityDescription(
+        key="socBms",
+        translation_key="socBms",
+        name="Battery level BMS",
+        native_unit_of_measurement=PERCENTAGE,
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_conversion_function=lambda value: min(100, float(value) if value else 0),
+    ),
+    AtonStorageSensorEntityDescription(
+        key="socInv",
+        translation_key="socInv",
+        name="Battery level inverter",
+        native_unit_of_measurement=PERCENTAGE,
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_conversion_function=lambda value: min(100, float(value) if value else 0),
+    ),
+    AtonStorageSensorEntityDescription(
+        key="socAh",
+        translation_key="socAh",
+        name="Battery level Ah",
+        native_unit_of_measurement=PERCENTAGE,
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_conversion_function=lambda value: min(100, float(value) if value else 0),
+    ),
+    # ALARMS
+    AtonStorageSensorEntityDescription(
+        key="active_alarms",
+        translation_key="active_alarms",
+        name="Active alarms",
+        icon="mdi:alert-circle-outline",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_calc_function=lambda controller: controller.active_alarm_count,
+    ),
+    AtonStorageSensorEntityDescription(
+        key="dataAllarme",
+        translation_key="dataAllarme",
+        name="Last alarm",
+        icon="mdi:alert-outline",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_conversion_function=_plant_timestamp,
+    ),
+    # DIAGNOSTICS
+    AtonStorageSensorEntityDescription(
+        key="timestampScheda",
+        translation_key="timestampScheda",
+        name="Board time",
+        icon="mdi:clock-outline",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_conversion_function=_plant_timestamp,
+    ),
+    AtonStorageSensorEntityDescription(
+        key="fwSchedaExt",
+        translation_key="fwSchedaExt",
+        name="Extended firmware",
+        icon="mdi:chip",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    # No unit: the plant reports 60000 on a 4 kW system, so the scale is not
+    # confirmed. Left as a bare number rather than mislabelling it as watts.
+    AtonStorageSensorEntityDescription(
+        key="exportLimit",
+        translation_key="exportLimit",
+        name="Export limit",
+        icon="mdi:transmission-tower-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    # PER PHASE POWER, zero on a single phase plant
+    AtonStorageSensorEntityDescription(
+        key="pL1",
+        translation_key="pL1",
+        name="Phase 1 power",
+        icon="mdi:numeric-1-box-outline",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    AtonStorageSensorEntityDescription(
+        key="pL2",
+        translation_key="pL2",
+        name="Phase 2 power",
+        icon="mdi:numeric-2-box-outline",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    AtonStorageSensorEntityDescription(
+        key="pL3",
+        translation_key="pL3",
+        name="Phase 3 power",
+        icon="mdi:numeric-3-box-outline",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    AtonStorageSensorEntityDescription(
+        key="pReteL1",
+        translation_key="pReteL1",
+        name="Grid phase 1 power",
+        icon="mdi:transmission-tower",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    AtonStorageSensorEntityDescription(
+        key="pReteL2",
+        translation_key="pReteL2",
+        name="Grid phase 2 power",
+        icon="mdi:transmission-tower",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    AtonStorageSensorEntityDescription(
+        key="pReteL3",
+        translation_key="pReteL3",
+        name="Grid phase 3 power",
+        icon="mdi:transmission-tower",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
 )
 
 
@@ -556,6 +698,8 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
                 "run mode": self.controller.get_raw_data("runMode"),
             }
             return attrSensor
+        if self.entity_description.key == "active_alarms":
+            return {"alarms": self.controller.active_alarms}
         if self.entity_description.key == "soc":
             attrSensor = {
                 "raw data": self.controller.get_raw_data("soc"),

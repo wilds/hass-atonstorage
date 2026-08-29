@@ -23,6 +23,7 @@ _SET_REQUEST_ENDPOINT = (
     _BASEURL
     + "set_request.php?request=MONITOR&intervallo={interval}&sn={serial_number}"
 )
+_ALARM_DESC_ENDPOINT = _BASEURL + "getAlarmDesc.php?sn={serial_number}"
 # _ENDPOINT = "https://www.atonstorage.com/atonTC/get_monitor.php?sn={serialNumber}&_={timestamp}"
 # https://www.atonstorage.com/atonTC/set_request.php?sn={serialNumber}&request=MONITOR&intervallo=15&_={timestamp}
 # https://www.atonstorage.com/atonTC/getAlarmDesc.php?sn={serialNumber}&_={timestamp}
@@ -76,6 +77,11 @@ class Controller:
         # data dicts
         self.monitor_data = None
         self.energy_data = None
+
+        # The 128 alarm descriptions are static, so they are fetched once
+        # and kept; a failure here must never break a refresh.
+        self._alarm_descriptions: list[str] = []
+        self._alarm_descriptions_tried = False
 
     async def async_close(self) -> None:
         """Close the http client owned by this controller."""
@@ -218,6 +224,61 @@ class Controller:
         # refresh can never mix fresh monitor data with stale energy data.
         self.monitor_data = monitor_data
         self.energy_data = energy_data
+
+        # Optional extra, deliberately last: it can neither hold up the data
+        # above nor leave a partial refresh behind if the portal misbehaves.
+        if not self._alarm_descriptions_tried:
+            await self._async_load_alarm_descriptions()
+
+    async def _async_load_alarm_descriptions(self) -> None:
+        """Fetch the alarm name table once. Best effort, never fatal."""
+        self._alarm_descriptions_tried = True
+        session = self._session
+        try:
+            data = await self._async_get_json(
+                _ALARM_DESC_ENDPOINT.format(serial_number=self._serial_number),
+                "getAlarmDesc",
+            )
+        except Exception as err:  # noqa: BLE001
+            # _async_get_json drops the session when a reply is not JSON.
+            # The monitor and energy calls just succeeded with this one, so
+            # an optional extra must not force a needless re-login.
+            self._session = session
+            _LOGGER.debug("Could not fetch the alarm descriptions: %s", err)
+            return
+
+        if isinstance(data, list):
+            self._alarm_descriptions = [str(item) for item in data]
+            _LOGGER.debug("Loaded %d alarm descriptions", len(self._alarm_descriptions))
+
+    @property
+    def active_alarms(self) -> list[str]:
+        """Names of the alarms currently raised.
+
+        monitor_data["allarmi"] is a flag per alarm, positionally matching
+        the getAlarmDesc table. Every flag was zero on the plant this was
+        built against, so the mapping is inferred from the equal lengths.
+        """
+        raw = (self.monitor_data or {}).get("allarmi")
+        if not isinstance(raw, list):
+            return []
+
+        names = []
+        for index, value in enumerate(raw):
+            try:
+                if int(value) == 0:
+                    continue
+            except (TypeError, ValueError):
+                continue
+            if index < len(self._alarm_descriptions):
+                names.append(self._alarm_descriptions[index])
+            else:
+                names.append(f"alarm {index + 1}")
+        return names
+
+    @property
+    def active_alarm_count(self) -> int:
+        return len(self.active_alarms)
 
     def get_raw_data(self, key: str):
         """Return a raw value from either payload, or None when unavailable."""
@@ -418,8 +479,25 @@ class Controller:
         return self.monitor_data["ePannelli"]
 
     @property
+    def self_consumed_energy(self) -> float:
+        """Energy the plant supplied to the house itself, solar plus battery.
+
+        Verified against two days of get_energy.php: tot_pBatteria integrates
+        the pBatteria series, which tracks pUtenze whenever the house is not
+        drawing from the grid, and drops to zero the moment the battery empties
+        and pReteIn takes over. It is not battery charge energy.
+        """
+        return float(self.energy_data["tot_pBatteria"])
+
+    @property
     def consumed_energy(self) -> float:
-        return self.bought_energy + self.battery_energy_discharged
+        """Daily household consumption, as reported by the portal.
+
+        Previously computed as bought + discharged, which ignored the solar
+        consumed directly by the house and under-reported by roughly a factor
+        of three (3.35 against a real 9.99 kWh on 2026-08-29).
+        """
+        return float(self.energy_data["tot_pUtenze"])
 
     # "ingressi1": "0",
     # "ingressi2": "160",
