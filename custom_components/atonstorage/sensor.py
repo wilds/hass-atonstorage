@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from homeassistant.components.integration.sensor import IntegrationSensor
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -26,7 +25,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.util import slugify
 from homeassistant.util.dt import as_local
 
 from .const import DOMAIN
@@ -41,13 +39,6 @@ class AtonStorageSensorEntityDescription(SensorEntityDescription):
 
     value_conversion_function: Callable[[Any], Any] = lambda val: val
     value_calc_function: Callable[[AtonStorage], Any] = None
-
-
-@dataclass
-class AtonStorageIntegrationSensorEntityDescription(SensorEntityDescription):
-    """Class to describe a AtonStorage Integration sensor entity."""
-
-    source_sensor: str = None
 
 
 INVERTER_SENSOR_DESCRIPTIONS = (
@@ -263,7 +254,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
-        value_conversion_function=lambda value: int(value) / 1000,
+        value_conversion_function=lambda value: float(value) / 1000,
         # last_reset=as_local(datetime.combine(date.today(), datetime.min.time())),
     ),
     
@@ -275,7 +266,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
-        value_conversion_function=lambda value: int(value) / 1000,
+        value_conversion_function=lambda value: float(value) / 1000,
         # last_reset=as_local(datetime.combine(date.today(), datetime.min.time())),
     ),
     # Daily counter, reset to 0 by the plant at midnight. TOTAL_INCREASING lets the
@@ -350,15 +341,13 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         device_class=SensorDeviceClass.POWER_FACTOR,
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
+        # Float math on purpose: int() used to truncate both terms, which
+        # reported a flat 100% for every day under 1 kWh of consumption.
         value_calc_function=lambda controller: (
-            100
-            if int(controller.consumed_energy) == 0
+            100.0
+            if controller.consumed_energy <= 0
             else round(
-                100
-                - (
-                    (int(controller.bought_energy) / int(controller.consumed_energy))
-                    * 100
-                ),
+                100 - (controller.bought_energy / controller.consumed_energy * 100),
                 2,
             )
         ),
@@ -483,35 +472,15 @@ def _create_entities(hass: HomeAssistant, entry: dict):
 
     for entity_description in INVERTER_SENSOR_DESCRIPTIONS:
         if entity_description.name in sensors_selected:
-            if isinstance(entity_description, AtonStorageSensorEntityDescription):
-                entities.append(
-                    AtonStorageSensorEntity(
-                        entry=entry,
-                        controller=controller,
-                        coordinator=coordinator,
-                        description=entity_description,
-                        username=username,
-                    )
+            entities.append(
+                AtonStorageSensorEntity(
+                    entry=entry,
+                    controller=controller,
+                    coordinator=coordinator,
+                    description=entity_description,
+                    username=username,
                 )
-            elif isinstance(
-                entity_description, AtonStorageIntegrationSensorEntityDescription
-            ):
-                entities.append(
-                    AtonStorageIntegrationSensor(
-                        hass, # Home Assistant 2025.8+: IntegrationSensor requires hass 
-                        integration_method="left",
-                        name=f"{username} {entity_description.name}",
-                        round_digits=2,
-                        source_entity=f"sensor.{slugify(username)}_{entity_description.source_sensor}",
-                        unique_id=f"{controller.serial_number}_{entity_description.key}",
-                        unit_prefix="k",
-                        unit_time="h",
-                        entry=entry,
-                        controller=controller,
-                        description=entity_description,
-                        username=username,
-                    )
-                )
+            )
 
     return entities
 
@@ -554,8 +523,6 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
         )
 
         self._register_key = self.entity_description.key
-        if "#" in self._register_key:
-            self._register_key = self._register_key[0 : self._register_key.find("#")]
 
     @property
     def native_value(self):
@@ -565,6 +532,11 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
             value = self.entity_description.value_calc_function(self.controller)
         else:
             value = self.controller.get_raw_data(self._register_key)
+            # The payload simply lacks this key, e.g. the EV fields on a
+            # plant without a wallbox. Report unknown instead of feeding
+            # None to strptime() or float().
+            if value is None:
+                return None
 
         if self.entity_description.value_conversion_function:
             value = self.entity_description.value_conversion_function(value)
@@ -590,58 +562,3 @@ class AtonStorageSensorEntity(CoordinatorEntity, SensorEntity):
                 "batteries number": self.controller.get_raw_data("numBatterie"),
             }
             return attrSensor
-
-
-class AtonStorageIntegrationSensor(IntegrationSensor):
-    """Representation of an integration sensor."""
-
-    entity_description: AtonStorageIntegrationSensorEntityDescription
-
-    def __init__(
-        self,
-        hass, # Home Assistant 2025.8+: IntegrationSensor requires hass 
-        *,
-        integration_method: str,
-        name: str | None,
-        round_digits: int,
-        source_entity: str,
-        unique_id: str | None,
-        unit_prefix: str | None,
-        unit_time: str,
-        entry: ConfigEntry,
-        controller: AtonStorage,
-        description: AtonStorageIntegrationSensorEntityDescription,
-        username,
-    ) -> None:
-        """Initialize the integration sensor."""
-        super().__init__(
-            hass, # Home Assistant 2025.8+: IntegrationSensor requires hass 
-            integration_method=integration_method,
-            name=name,
-            round_digits=round_digits,
-            source_entity=source_entity,
-            unique_id=unique_id,
-            unit_prefix=unit_prefix,
-            unit_time=unit_time,
-            max_sub_interval=None,
-        )
-
-        self.entity_description = description
-        self.controller = controller
-        self._entry = entry
-        self._name = name
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, "AtonStorage " + username)},
-            name=username,
-            manufacturer="AtonStorage",
-            sw_version=controller.fw_Scheda,
-            serial_number=controller.serial_number,
-        )
-
-    @property
-    def icon(self):
-        return self.entity_description.icon
-
-    @property
-    def device_class(self):
-        return self.entity_description.device_class

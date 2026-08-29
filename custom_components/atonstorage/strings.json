@@ -2,30 +2,44 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to the AtonStorage",
+        "title": "Connect to the AtonStorage controller",
         "data": {
-          "name": "Device Name",
           "username": "Username",
           "password": "Password",
           "device_id": "Serial number",
-          "scan_interval": "Scan interval"
+          "scan_interval": "Scan interval (seconds)",
+          "monitored_variables": "Sensors to create"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate AtonStorage",
+        "description": "The AtonStorage portal rejected the stored password for {username}. Enter it again to reconnect.",
+        "data": {
+          "password": "Password"
         }
       }
     },
     "error": {
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
-      "device_required": "MAC Address required for firmware below 2.1.9 (4)",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "username_required": "Username is required",
+      "password_required": "Password is required",
+      "serial_number_required": "Serial number is required",
+      "unknown": "Unexpected error"
     },
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+      "already_configured": "This plant is already configured",
+      "reauth_successful": "Re-authentication was successful"
     }
   },
-  "entity": {
-    "sensor": {
-      "pSolare": {
-        "name": "Instant solar power"
+  "options": {
+    "step": {
+      "init": {
+        "title": "AtonStorage options",
+        "data": {
+          "scan_interval": "Scan interval (seconds)",
+          "monitored_variables": "Sensors to create"
+        }
       }
     }
   }

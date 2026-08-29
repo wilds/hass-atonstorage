@@ -181,8 +181,6 @@ class AtonStorageBinarySensorEntity(CoordinatorEntity, BinarySensorEntity):
         )
 
         self._register_key = self.entity_description.key
-        if "#" in self._register_key:
-            self._register_key = self._register_key[0 : self._register_key.find("#")]
 
     @property
     def is_on(self):
