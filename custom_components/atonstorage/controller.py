@@ -1,11 +1,16 @@
 """AtonStorage controller"""
+
+from __future__ import annotations
+
 import json
 import logging
 import re
-from datetime import datetime
+from typing import Any
 
+import httpx
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.httpx_client import get_async_client
+from homeassistant.helpers.httpx_client import create_async_httpx_client
+from homeassistant.util import dt as dt_util
 
 _BASEURL = "https://www.atonstorage.com/atonTC/"
 _LOGIN_ENDPOINT = _BASEURL + "index.php"
@@ -18,6 +23,7 @@ _SET_REQUEST_ENDPOINT = (
     _BASEURL
     + "set_request.php?request=MONITOR&intervallo={interval}&sn={serial_number}"
 )
+_ALARM_DESC_ENDPOINT = _BASEURL + "getAlarmDesc.php?sn={serial_number}"
 # _ENDPOINT = "https://www.atonstorage.com/atonTC/get_monitor.php?sn={serialNumber}&_={timestamp}"
 # https://www.atonstorage.com/atonTC/set_request.php?sn={serialNumber}&request=MONITOR&intervallo=15&_={timestamp}
 # https://www.atonstorage.com/atonTC/getAlarmDesc.php?sn={serialNumber}&_={timestamp}
@@ -29,25 +35,27 @@ _SET_REQUEST_ENDPOINT = (
 # https://www.atonstorage.com/atonTC/checkTShift.php?sn={serialNumber}&_={timestamp}
 # https://www.atonstorage.com/atonTC/getTShift.php?sn={serialNumber}&_={timestamp}
 
+# Per request timeout. A full refresh performs three of these calls, so it has
+# to stay well below the coordinator's own timeout.
+REQUEST_TIMEOUT = 30
+
+_PLANT_ID_RE = re.compile(r"var idImpianto = (.*);")
+_UNAUTHORIZED = b"Unauthorized"
+
 _LOGGER = logging.getLogger(__name__)
 
 
 class Controller:
     """Define a generic AtonStorage sensor."""
 
-    _session = None
-    monitor_data = None
-    _hass: HomeAssistant = None
-    _async_client = None
-
     def __init__(self, hass: HomeAssistant, user, password, serial_number, opts):
         """Initialize."""
 
-        # if user is None or password is None:
-        #    raise UsernameAndPasswordRequiredError
-
         if serial_number is None:
             raise SerialNumberRequiredError
+
+        if not user or not password:
+            raise UsernameAndPasswordRequiredError
 
         self._hass = hass
 
@@ -57,167 +65,266 @@ class Controller:
         self._plant_id = None
         self._opts = opts
         self._session = None
-        self._async_client = get_async_client(hass)
-        
+
+        # A private client, so the PHP session cookie is not shared with every
+        # other httpx based integration, nor with a second AtonStorage account.
+        # Closed again by async_close(); auto_cleanup is off because it would
+        # register one more stop listener on every reload of the config entry.
+        self._async_client = create_async_httpx_client(
+            hass, auto_cleanup=False, follow_redirects=True
+        )
+
         # data dicts
         self.monitor_data = None
         self.energy_data = None
 
+        # The 128 alarm descriptions are static, so they are fetched once
+        # and kept; a failure here must never break a refresh.
+        self._alarm_descriptions: list[str] = []
+        self._alarm_descriptions_tried = False
+
+    async def async_close(self) -> None:
+        """Close the http client owned by this controller."""
+        await self._async_client.aclose()
+
     async def login(self) -> bool:
         """Login to Aton server."""
 
-        login = await self._async_client.get(_LOGIN_ENDPOINT, timeout=60)
+        try:
+            landing = await self._async_client.get(
+                _LOGIN_ENDPOINT, timeout=REQUEST_TIMEOUT
+            )
+            login = await self._async_client.post(
+                _LOGIN_ENDPOINT,
+                timeout=REQUEST_TIMEOUT,
+                # Pass a dict and let httpx url-encode it: a hand built body
+                # breaks on passwords containing &, =, + or non ascii characters.
+                data={"username": self._user, "password": self._password},
+                cookies=landing.cookies,
+            )
+        except httpx.HTTPError as err:
+            raise AtonStorageConnectionError(f"Login request failed: {err}") from err
 
-        login = await self._async_client.post(
-            _LOGIN_ENDPOINT,
-            timeout=60,
-            data="username={user}&password={password}".format(
-                user=self._user, password=self._password
-            ),
-            cookies=login.cookies,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
+        if login.is_error:
+            raise AtonStorageConnectionError(f"Login returned HTTP {login.status_code}")
 
-        if login.headers is not None and login.headers["Set-Cookie"] is not None:
-            self._session = login.cookies
-            _LOGGER.info("Logged in")
+        # The portal hands out a session cookie even when the credentials are
+        # wrong, so the only reliable success marker is the plant id embedded in
+        # the page that comes back.
+        result = _PLANT_ID_RE.search(login.text)
+        if result is None:
+            _LOGGER.debug("No plant id in the login response, credentials rejected")
+            return False
 
-            # get plant id  
-            decoded_login_content = login.content.decode("utf-8")
-    
-            p = re.compile("var idImpianto = (.*);")
-            result = p.search(decoded_login_content)
+        self._plant_id = result.group(1)
+        self._session = login.cookies or landing.cookies
+        _LOGGER.info("Logged in, plant id %s", self._plant_id)
 
-            self._plant_id = result.group(1)
+        return True
 
-            return True
-        return False    
-
-    async def refresh(self) -> None:
-        """Refresh data from server"""
-
-        if self._session is None:
-            login = await self.login()
-            if not login:
-                raise InvalidUsernameOrPasswordError
+    async def _async_get(self, url: str, description: str) -> httpx.Response:
+        """Perform an authenticated GET, raising on anything that is not usable."""
 
         try:
-            set_interval = await self._async_client.get(
-                _SET_REQUEST_ENDPOINT.format(
-                    serial_number=self._serial_number,
-                    interval=self._opts.get("interval", 15),
-                ),
-                timeout=60,
-                cookies=self._session,
+            response = await self._async_client.get(
+                url, timeout=REQUEST_TIMEOUT, cookies=self._session
             )
-            if set_interval.content is None:
-                _LOGGER.error("Unable to set refresh interval")
-                raise AtonStorageConnectionError
-            elif set_interval.content == "Unauthorized":
-                self._session = None
-                raise AtonStorageConnectionError
+        except httpx.HTTPError as err:
+            raise AtonStorageConnectionError(f"{description} failed: {err}") from err
 
-            monitor_response = await self._async_client.get(
-                _MONITOR_ENDPOINT.format(serial_number=self._serial_number),
-                timeout=60,
-                cookies=self._session,
+        # Note the b prefix: response.content is bytes, comparing it to a str
+        # silently never matched.
+        if (
+            response.status_code in (401, 403)
+            or response.content.strip() == _UNAUTHORIZED
+        ):
+            self._session = None
+            raise AtonStorageSessionExpiredError(f"{description} was refused")
+
+        if response.is_error:
+            raise AtonStorageConnectionError(
+                f"{description} returned HTTP {response.status_code}"
             )
-            if monitor_response.content is None:
-                _LOGGER.error("Unable to start fetching data")
-                raise AtonStorageConnectionError
-            elif monitor_response.content == "Unauthorized":
-                self._session = None
-                raise AtonStorageConnectionError
-            
+
+        if not response.content:
+            raise AtonStorageConnectionError(f"{description} returned an empty body")
+
+        return response
+
+    async def _async_get_json(self, url: str, description: str) -> Any:
+        """Perform an authenticated GET and decode the JSON payload."""
+
+        response = await self._async_get(url, description)
+
+        try:
+            data = json.loads(response.content)
+        except ValueError as err:
+            # A body that is not JSON is almost always the HTML login page, i.e.
+            # the PHP session expired. Drop the session so the caller can log in
+            # again, instead of silently serving yesterday's values forever.
+            self._session = None
+            _LOGGER.debug("Erroneous JSON for %s: %s", description, response.content)
+            raise AtonStorageSessionExpiredError(
+                f"{description} did not return JSON"
+            ) from err
+
+        _LOGGER.debug("Data fetched from resource: %s", response.content)
+
+        return data
+
+    async def refresh(self) -> None:
+        """Refresh data from server, logging in again if the session expired."""
+
+        for attempt in (1, 2):
+            if self._session is None:
+                if not await self.login():
+                    raise InvalidUsernameOrPasswordError
+
             try:
-                self.monitor_data = json.loads(monitor_response.content)
-                _LOGGER.debug("Data fetched from resource: %s", monitor_response.content)
-            except ValueError:
-                _LOGGER.warning("REST result could not be parsed as JSON")
-                _LOGGER.debug("Erroneous JSON: %s", self.monitor_data)
-            except Exception as exc:
-                _LOGGER.error(exc)
-                raise exc
+                await self._async_refresh_once()
+            except AtonStorageSessionExpiredError as err:
+                if attempt == 2:
+                    raise AtonStorageConnectionError(str(err)) from err
+                _LOGGER.info("AtonStorage session expired, logging in again")
+                continue
 
-            # hack fix
-            if self._plant_id is None:
-                _LOGGER.error(f"Unable to get plant id. Response: {monitor_response.content}") 
-                return
-                
-            energy_response = await self._async_client.get(
-                _ENERGY_ENDPOINT.format(
-                    id=self._plant_id,
-                    year=datetime.now().year,
-                    month=datetime.now().month,
-                    day=datetime.now().day,
-                ),
-                timeout=60,
-                cookies=self._session,
+            return
+
+    async def _async_refresh_once(self) -> None:
+        """Run one full fetch cycle with the session currently held."""
+
+        await self._async_get(
+            _SET_REQUEST_ENDPOINT.format(
+                serial_number=self._serial_number,
+                interval=self._opts.get("interval", 15),
+            ),
+            "set_request",
+        )
+
+        monitor_data = await self._async_get_json(
+            _MONITOR_ENDPOINT.format(serial_number=self._serial_number),
+            "get_monitor",
+        )
+
+        # Read the clock once, in Home Assistant's configured timezone: three
+        # separate now() calls can straddle midnight and build a date whose
+        # year/month/day come from different days.
+        now = dt_util.now()
+        energy_data = await self._async_get_json(
+            _ENERGY_ENDPOINT.format(
+                id=self._plant_id,
+                year=now.year,
+                month=now.month,
+                day=now.day,
+            ),
+            "get_energy",
+        )
+
+        # Publish both payloads only once both have been fetched, so a partial
+        # refresh can never mix fresh monitor data with stale energy data.
+        self.monitor_data = monitor_data
+        self.energy_data = energy_data
+
+        # Optional extra, deliberately last: it can neither hold up the data
+        # above nor leave a partial refresh behind if the portal misbehaves.
+        if not self._alarm_descriptions_tried:
+            await self._async_load_alarm_descriptions()
+
+    async def _async_load_alarm_descriptions(self) -> None:
+        """Fetch the alarm name table once. Best effort, never fatal."""
+        self._alarm_descriptions_tried = True
+        session = self._session
+        try:
+            data = await self._async_get_json(
+                _ALARM_DESC_ENDPOINT.format(serial_number=self._serial_number),
+                "getAlarmDesc",
             )
-            
-            if energy_response.content is None:
-                _LOGGER.warning("Empty reply found when expecting JSON data")
-                raise AtonStorageConnectionError
-            
-            elif energy_response.content == "Unauthorized":
-                self._session = None
-                raise AtonStorageConnectionError
-                
+        except Exception as err:  # noqa: BLE001
+            # _async_get_json drops the session when a reply is not JSON.
+            # The monitor and energy calls just succeeded with this one, so
+            # an optional extra must not force a needless re-login.
+            self._session = session
+            _LOGGER.debug("Could not fetch the alarm descriptions: %s", err)
+            return
+
+        if isinstance(data, list):
+            self._alarm_descriptions = [str(item) for item in data]
+            _LOGGER.debug("Loaded %d alarm descriptions", len(self._alarm_descriptions))
+
+    @property
+    def active_alarms(self) -> list[str]:
+        """Names of the alarms currently raised.
+
+        monitor_data["allarmi"] is a flag per alarm, positionally matching
+        the getAlarmDesc table. Every flag was zero on the plant this was
+        built against, so the mapping is inferred from the equal lengths.
+        """
+        raw = (self.monitor_data or {}).get("allarmi")
+        if not isinstance(raw, list):
+            return []
+
+        names = []
+        for index, value in enumerate(raw):
             try:
-                self.energy_data = json.loads(energy_response.content)
-                _LOGGER.debug(
-                    "Data fetched from resource: %s", energy_response.content
-                )
+                if int(value) == 0:
+                    continue
+            except (TypeError, ValueError):
+                continue
+            if index < len(self._alarm_descriptions):
+                names.append(self._alarm_descriptions[index])
+            else:
+                names.append(f"alarm {index + 1}")
+        return names
 
-            except ValueError:
-                _LOGGER.warning("REST result could not be parsed as JSON")
-                _LOGGER.debug("Erroneous JSON: %s", self.monitor_data)
-            except Exception as exc:
-                _LOGGER.error(exc)
-                raise exc
-
-        except TypeError:
-            _LOGGER.error("Unable to fetch data. Response: %s", self.monitor_data)
-        except Exception as exc:
-            _LOGGER.error(exc)
-            raise exc
+    @property
+    def active_alarm_count(self) -> int:
+        return len(self.active_alarms)
 
     def get_raw_data(self, key: str):
-        if key in self.monitor_data:
+        """Return a raw value from either payload, or None when unavailable."""
+
+        if self.monitor_data and key in self.monitor_data:
             return self.monitor_data[key]
 
-        if key in self.energy_data:
+        if self.energy_data and key in self.energy_data:
             return self.energy_data[key]
 
-        _LOGGER.warning("Key %s not found in monitor_data or energy_data", key)
+        # Debug and not warning: a plant without an EV lacks a whole set of keys
+        # and would log on every single poll.
+        _LOGGER.debug("Key %s not found in monitor_data or energy_data", key)
+        return None
+
+    def _status_bit(self, mask: int) -> bool:
+        """Return a single bit of the status bitfield."""
+        return int(self.monitor_data.get("status") or 0) & mask == mask
 
     @property
     def grid_to_house(self) -> bool:
-        return int(self.monitor_data["status"]) & 1 == 1
+        return self._status_bit(1)
 
     @property
     def solar_to_battery(self) -> bool:
-        return int(self.monitor_data["status"]) & 2 == 2
+        return self._status_bit(2)
 
     @property
     def solar_to_grid(self) -> bool:
-        return int(self.monitor_data["status"]) & 4 == 4
+        return self._status_bit(4)
 
     @property
     def battery_to_house(self) -> bool:
-        return int(self.monitor_data["status"]) & 8 == 8
+        return self._status_bit(8)
 
     @property
     def solar_to_house(self) -> bool:
-        return int(self.monitor_data["status"]) & 16 == 16
+        return self._status_bit(16)
 
     @property
     def grid_to_battery(self) -> bool:
-        return int(self.monitor_data["status"]) & 32 == 32
+        return self._status_bit(32)
 
     @property
     def battery_to_grid(self) -> bool:
-        return int(self.monitor_data["status"]) & 64 == 64
+        return self._status_bit(64)
 
     @property
     def serial_number(self) -> str:
@@ -334,13 +441,13 @@ class Controller:
     @property
     def battery_discharged(self) -> int:
         return int(self.monitor_data["ahScaricati"])
-    
+
     @property
-    def battery_energy_charged(self) -> int:
+    def battery_energy_charged(self) -> float:
         return float(self.energy_data["tot_pBatteria"])
-    
+
     @property
-    def battery_energy_discharged(self) -> int:
+    def battery_energy_discharged(self) -> float:
         return float(self.energy_data["tot_pBatteriaB"])
 
     @property
@@ -360,11 +467,11 @@ class Controller:
         return self.monitor_data["pMaxComprata"]
 
     @property
-    def sold_energy(self) -> int:
+    def sold_energy(self) -> float:
         return float(self.energy_data["tot_pReteOut"])
 
     @property
-    def bought_energy(self) -> int:
+    def bought_energy(self) -> float:
         return float(self.energy_data["tot_pReteIn"])
 
     @property
@@ -372,8 +479,25 @@ class Controller:
         return self.monitor_data["ePannelli"]
 
     @property
-    def consumed_energy(self) -> int:
-        return float(self.bought_energy) + float(self.battery_energy_discharged)
+    def self_consumed_energy(self) -> float:
+        """Energy the plant supplied to the house itself, solar plus battery.
+
+        Verified against two days of get_energy.php: tot_pBatteria integrates
+        the pBatteria series, which tracks pUtenze whenever the house is not
+        drawing from the grid, and drops to zero the moment the battery empties
+        and pReteIn takes over. It is not battery charge energy.
+        """
+        return float(self.energy_data["tot_pBatteria"])
+
+    @property
+    def consumed_energy(self) -> float:
+        """Daily household consumption, as reported by the portal.
+
+        Previously computed as bought + discharged, which ignored the solar
+        consumed directly by the house and under-reported by roughly a factor
+        of three (3.35 against a real 9.99 kWh on 2026-08-29).
+        """
+        return float(self.energy_data["tot_pUtenze"])
 
     # "ingressi1": "0",
     # "ingressi2": "160",
@@ -445,7 +569,7 @@ class Controller:
 
     @property
     def vb_scheda(self) -> str:
-        return self.monitor_data["vbScheda"] | None
+        return self.monitor_data.get("vbScheda")
 
     # "flagProgrammazione": "128",
     # "flagProgrammazione3": "72",
@@ -475,29 +599,36 @@ class Controller:
     # var secondNumber = parseInt(_data.stato_EV)&0x0f;
 
     @property
+    def _ev_status_high(self) -> int:
+        """High nibble of stato_EV.
+
+        Mind the parentheses: in Python >> binds tighter than &, so writing
+        "x & 0xF0 >> 4" silently means "x & 0x0F" instead.
+        """
+        return (int(self.monitor_data.get("stato_EV") or 0) & 0xF0) >> 4
+
+    @property
+    def _ev_status_low(self) -> int:
+        """Low nibble of stato_EV."""
+        return int(self.monitor_data.get("stato_EV") or 0) & 0x0F
+
+    @property
     def ev_status_off(self) -> bool:
-        return int(self.monitor_data["stato_EV"]) & 0xF0 >> 4 == 0 or (
-            int(self.monitor_data["stato_EV"]) & 0xF0 >> 4 == 1
-            and int(self.monitor_data["stato_EV"]) & 0x0F != 3
+        return self._ev_status_high == 0 or (
+            self._ev_status_high == 1 and self._ev_status_low != 3
         )
 
     @property
     def ev_status_on(self) -> bool:
-        return (
-            int(self.monitor_data["stato_EV"]) & 0xF0 >> 4 == 1
-            and int(self.monitor_data["stato_EV"]) & 0x0F == 3
-        )
+        return self._ev_status_high == 1 and self._ev_status_low == 3
 
     @property
     def ev_status_charge(self) -> bool:
-        return int(self.monitor_data["stato_EV"]) & 0xF0 >> 4 == 2
+        return self._ev_status_high == 2
 
     @property
     def ev_status_warning(self) -> bool:
-        return (
-            int(self.monitor_data["stato_EV"]) & 0xF0 >> 4 == 4
-            or int(self.monitor_data["stato_EV"]) & 0xF0 >> 4 == 5
-        )
+        return self._ev_status_high in (4, 5)
 
     @property
     def ev_setp(self) -> float:
@@ -535,6 +666,10 @@ class Controller:
 
 class AtonStorageConnectionError(Exception):
     """Unable to start fetching data."""
+
+
+class AtonStorageSessionExpiredError(AtonStorageConnectionError):
+    """The server refused the session cookie, a new login is needed."""
 
 
 class UsernameAndPasswordRequiredError(Exception):

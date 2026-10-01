@@ -1,12 +1,16 @@
 {
   "domain": "atonstorage",
   "name": "AtonStorage",
-  "codeowners": ["@wilds", "@bladan83"],
+  "codeowners": [
+    "@wilds",
+    "@bladan83"
+  ],
   "config_flow": true,
-  "dependencies": ["integration"],
+  "dependencies": [],
   "documentation": "https://github.com/wilds/hass-atonstorage",
+  "integration_type": "device",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/wilds/hass-atonstorage/issues",
   "requirements": [],
-  "version": "1.0.9"
+  "version": "1.0.12"
 }

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
@@ -106,6 +107,25 @@ INVERTER_BINARY_SENSOR_DESCRIPTIONS = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_calc_function=lambda controller: controller.ev_status_warning,
     ),
+    # ADDED IN 1.0.12
+    AtonStorageBinarySensorEntityDescription(
+        key="wifi",
+        translation_key="wifi",
+        name="WiFi",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_calc_function=lambda controller: str(
+            (controller.monitor_data or {}).get("wifi", "0")
+        ) not in ("0", "", "None"),
+    ),
+    AtonStorageBinarySensorEntityDescription(
+        key="has_alarms",
+        translation_key="has_alarms",
+        name="Alarm",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_calc_function=lambda controller: bool(controller.active_alarms),
+    ),
 )
 
 
@@ -181,8 +201,6 @@ class AtonStorageBinarySensorEntity(CoordinatorEntity, BinarySensorEntity):
         )
 
         self._register_key = self.entity_description.key
-        if "#" in self._register_key:
-            self._register_key = self._register_key[0 : self._register_key.find("#")]
 
     @property
     def is_on(self):
