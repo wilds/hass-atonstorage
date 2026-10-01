@@ -1,4 +1,5 @@
 """AtonStorage integration."""
+import inspect
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -608,8 +609,7 @@ class AtonStorageIntegrationSensor(IntegrationSensor):
         username,
     ) -> None:
         """Initialize the integration sensor."""
-        super().__init__(
-            hass, # Home Assistant 2025.8+: IntegrationSensor requires hass 
+        integration_kwargs = dict(
             integration_method=integration_method,
             name=name,
             round_digits=round_digits,
@@ -619,6 +619,16 @@ class AtonStorageIntegrationSensor(IntegrationSensor):
             unit_time=unit_time,
             max_sub_interval=None,
         )
+        # HA 2025.8 made `hass` a required positional argument of
+        # IntegrationSensor.__init__; HA 2026.8 removed it again
+        # (home-assistant/core#177596) and made every remaining parameter
+        # keyword-only. Neither change is in HA's official breaking-changes
+        # list, since the class is considered internal API. Only forward
+        # `hass` when the installed IntegrationSensor still accepts it, so
+        # this works on both sides of that change.
+        if "hass" in inspect.signature(IntegrationSensor.__init__).parameters:
+            integration_kwargs["hass"] = hass
+        super().__init__(**integration_kwargs)
 
         self.entity_description = description
         self.controller = controller
