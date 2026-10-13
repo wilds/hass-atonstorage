@@ -1,1 +1,10 @@
-pre-commit==2.3.0
+# Lint
+pre-commit==4.7.0
+black==26.10.1
+flake8==7.4.1
+
+# Tests (pytest.ini sets asyncio_mode=auto, hence pytest-asyncio)
+pytest==9.1.1
+pytest-asyncio==1.4.0
+# Latest release supporting Python 3.11
+homeassistant==2024.3.3

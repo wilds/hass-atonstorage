@@ -1,4 +1,5 @@
 """AtonStorage integration."""
+
 import inspect
 import logging
 from collections.abc import Callable
@@ -255,7 +256,7 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         icon="mdi:transmission-tower-export",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     AtonStorageSensorEntityDescription(
         key="ePannelli",
@@ -268,7 +269,6 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         value_conversion_function=lambda value: float(value) / 1000,
         # last_reset=as_local(datetime.combine(date.today(), datetime.min.time())),
     ),
-    
     AtonStorageSensorEntityDescription(
         key="eBatteria",
         translation_key="eBatteria",
@@ -314,9 +314,11 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
-        value_calc_function=lambda controller: abs(controller.instant_grid_power)
-        if controller.instant_grid_power < 0
-        else 0,
+        value_calc_function=lambda controller: (
+            abs(controller.instant_grid_power)
+            if controller.instant_grid_power < 0
+            else 0
+        ),
     ),
     AtonStorageSensorEntityDescription(
         key="pRete_Out",
@@ -326,9 +328,9 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
-        value_calc_function=lambda controller: controller.instant_grid_power
-        if controller.instant_grid_power > 0
-        else 0,
+        value_calc_function=lambda controller: (
+            controller.instant_grid_power if controller.instant_grid_power > 0 else 0
+        ),
     ),
     # CONSUMED ENERGY
     AtonStorageSensorEntityDescription(
@@ -372,9 +374,11 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
-        value_calc_function=lambda controller: controller.instant_battery_power
-        if controller.instant_battery_power > 0
-        else 0,
+        value_calc_function=lambda controller: (
+            controller.instant_battery_power
+            if controller.instant_battery_power > 0
+            else 0
+        ),
     ),
     AtonStorageSensorEntityDescription(
         key="pBatteriaOut",
@@ -384,9 +388,11 @@ INVERTER_SENSOR_DESCRIPTIONS = (
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
-        value_calc_function=lambda controller: abs(controller.instant_battery_power)
-        if controller.instant_battery_power < 0
-        else 0,
+        value_calc_function=lambda controller: (
+            abs(controller.instant_battery_power)
+            if controller.instant_battery_power < 0
+            else 0
+        ),
     ),
     # EV
     AtonStorageSensorEntityDescription(

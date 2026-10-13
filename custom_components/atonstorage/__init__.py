@@ -59,9 +59,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     password = entry.data.get(CONF_PASSWORD)
     serial_number = entry.data.get(CONF_DEVICE_ID)
     scan_interval = _entry_value(entry, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-    sensors_selected = _entry_value(
-        entry, CONF_MONITORED_VARIABLES, AVAILABLE_SENSORS
-    )
+    sensors_selected = _entry_value(entry, CONF_MONITORED_VARIABLES, AVAILABLE_SENSORS)
 
     controller = AtonStorage(
         hass, user, password, serial_number, {"interval": scan_interval}
@@ -170,9 +168,7 @@ class AtonStorageUpdateCoordinator(DataUpdateCoordinator):
                 "AtonStorage rejected the stored credentials"
             ) from err
         except TimeoutError as err:
-            raise UpdateFailed(
-                f"Timeout fetching {self.serial_number} values"
-            ) from err
+            raise UpdateFailed(f"Timeout fetching {self.serial_number} values") from err
         except Exception as err:
             raise UpdateFailed(
                 f"Could not update {self.serial_number} values: {err}"

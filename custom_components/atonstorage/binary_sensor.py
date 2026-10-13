@@ -1,4 +1,5 @@
 """AtonStorage integration."""
+
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -116,7 +117,8 @@ INVERTER_BINARY_SENSOR_DESCRIPTIONS = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_calc_function=lambda controller: str(
             (controller.monitor_data or {}).get("wifi", "0")
-        ) not in ("0", "", "None"),
+        )
+        not in ("0", "", "None"),
     ),
     AtonStorageBinarySensorEntityDescription(
         key="has_alarms",
