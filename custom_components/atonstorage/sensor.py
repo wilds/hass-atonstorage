@@ -1,6 +1,5 @@
 """AtonStorage integration."""
 
-import inspect
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
