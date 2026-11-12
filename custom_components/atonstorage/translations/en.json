@@ -9,6 +9,9 @@
           "device_id": "Serial number",
           "scan_interval": "Scan interval (seconds)",
           "monitored_variables": "Sensors to create"
+        },
+        "data_description": {
+          "device_id": "Use the plant serial from the AtonStorage app or portal, not the 16-digit number on the inverter label."
         }
       },
       "reauth_confirm": {
@@ -25,6 +28,7 @@
       "username_required": "Username is required",
       "password_required": "Password is required",
       "serial_number_required": "Serial number is required",
+      "invalid_serial": "The portal returned no data for this serial number. Use the plant serial shown in the AtonStorage app or portal, not the 16-digit number on the inverter label.",
       "unknown": "Unexpected error"
     },
     "abort": {

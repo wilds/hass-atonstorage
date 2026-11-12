@@ -21,6 +21,7 @@ from .const import AVAILABLE_SENSORS, DEFAULT_NAME, DEFAULT_SCAN_INTERVAL, DOMAI
 from .controller import AtonStorageConnectionError
 from .controller import Controller as AtonStorage
 from .controller import (
+    InvalidSerialNumberError,
     InvalidUsernameOrPasswordError,
     SerialNumberRequiredError,
     UsernameAndPasswordRequiredError,
@@ -90,6 +91,8 @@ class FlowHandler(ConfigFlow, domain=DOMAIN):
             }, None
         except SerialNumberRequiredError:
             return {CONF_DEVICE_ID: "serial_number_required"}, None
+        except InvalidSerialNumberError:
+            return {CONF_DEVICE_ID: "invalid_serial"}, None
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Unexpected exception")
             return {"base": "unknown"}, None
