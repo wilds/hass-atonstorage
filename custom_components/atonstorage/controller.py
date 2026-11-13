@@ -206,6 +206,9 @@ class Controller:
             "get_monitor",
         )
 
+        if not isinstance(monitor_data, dict) or "serialNumber" not in monitor_data:
+            raise InvalidSerialNumberError
+
         # Read the clock once, in Home Assistant's configured timezone: three
         # separate now() calls can straddle midnight and build a date whose
         # year/month/day come from different days.
@@ -682,3 +685,7 @@ class InvalidUsernameOrPasswordError(Exception):
 
 class SerialNumberRequiredError(Exception):
     """Error to serial number required."""
+
+
+class InvalidSerialNumberError(Exception):
+    """The portal returned no plant data for the supplied serial number."""
