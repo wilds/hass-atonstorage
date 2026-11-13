@@ -2,12 +2,11 @@
 
 import httpx
 import pytest
-from homeassistant.const import CONF_DEVICE_ID, CONF_PASSWORD, CONF_USERNAME
-from homeassistant.helpers.update_coordinator import UpdateFailed
-
 from custom_components.atonstorage import AtonStorageUpdateCoordinator
 from custom_components.atonstorage.config_flow import FlowHandler
 from custom_components.atonstorage.controller import Controller
+from homeassistant.const import CONF_DEVICE_ID, CONF_PASSWORD, CONF_USERNAME
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 
 @pytest.fixture
